@@ -2,29 +2,31 @@ from __future__ import annotations
 
 import csv
 import io
+import urllib.request
 import zipfile
 
-from .common import fetch_url
+from .common import USER_AGENT
 
 STATCAN_CPI_ZIP = "https://www150.statcan.gc.ca/n1/en/tbl/csv/18100004-eng.zip"
 ALL_ITEMS = "All-items"
 
 
+def _download_zip_bytes(url: str) -> bytes:
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(req, timeout=30) as response:
+        return response.read()
+
+
 def fetch_official_cpi_summary() -> dict:
     try:
-        raw = fetch_url(STATCAN_CPI_ZIP)
-        data = raw.encode("utf-8", errors="ignore")
+        data = _download_zip_bytes(STATCAN_CPI_ZIP)
         if not zipfile.is_zipfile(io.BytesIO(data)):
-            import urllib.request
-
-            req = urllib.request.Request(STATCAN_CPI_ZIP, headers={"User-Agent": "TrueNorthIndexBot/1.0"})
-            with urllib.request.urlopen(req, timeout=30) as response:
-                data = response.read()
+            return {"latest_release_month": None, "mom_pct": None, "yoy_pct": None}
 
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
             csv_name = next(name for name in zf.namelist() if name.endswith(".csv"))
             with zf.open(csv_name) as handle:
-                decoded = io.TextIOWrapper(handle, encoding="utf-8", errors="ignore")
+                decoded = io.TextIOWrapper(handle, encoding="utf-8-sig", errors="ignore")
                 rows = list(csv.DictReader(decoded))
 
         candidates = [

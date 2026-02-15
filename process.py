@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import statistics
+import uuid
 from collections import defaultdict
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
+from models import NowcastSnapshot
 from scrapers import (
     Quote,
     SourceHealth,
@@ -21,8 +24,11 @@ from scrapers import (
 )
 
 DATA_DIR = Path("data")
+RUNS_DIR = DATA_DIR / "runs"
 LATEST_PATH = DATA_DIR / "latest.json"
+PUBLISHED_LATEST_PATH = DATA_DIR / "published_latest.json"
 HISTORICAL_PATH = DATA_DIR / "historical.json"
+RELEASE_DB_PATH = DATA_DIR / "releases.db"
 
 CATEGORY_WEIGHTS = {
     "food": 0.165,
@@ -38,8 +44,6 @@ VALUE_BOUNDS = {
     "energy": (0.1, 100.0),
 }
 
-# If a category median moves by more than threshold day-over-day,
-# mark records as anomalous and drop them from today.
 OUTLIER_THRESHOLD_PCT = {
     "food": 60.0,
     "housing": 30.0,
@@ -47,6 +51,24 @@ OUTLIER_THRESHOLD_PCT = {
     "energy": 50.0,
 }
 
+CATEGORY_MIN_POINTS = {
+    "food": 5,
+    "housing": 2,
+    "transport": 1,
+    "energy": 1,
+}
+
+SOURCE_SLA_DAYS = {
+    "apify_loblaws": 14,
+    "openfoodfacts_api": 2,
+    "oeb_scrape": 2,
+    "ieso_hoep": 2,
+    "statcan_food_prices": 45,
+    "statcan_gas_csv": 45,
+    "statcan_cpi_csv": 45,
+}
+
+APIFY_MAX_AGE_DAYS = 14
 METHOD_LABEL = "Daily nowcast vs prior month basket proxy"
 
 
@@ -60,10 +82,46 @@ def round_or_none(value: float | None, places: int = 3) -> float | None:
     return round(value, places)
 
 
+def parse_iso_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def source_age_days(last_success_timestamp: str | None, now: datetime | None = None) -> int | None:
+    stamp = parse_iso_datetime(last_success_timestamp)
+    if stamp is None:
+        return None
+    if now is None:
+        now = utc_now()
+    return max(0, (now.date() - stamp.date()).days)
+
+
+def human_age(age_days: int | None) -> str:
+    if age_days is None:
+        return "unknown"
+    if age_days == 0:
+        return "updated today"
+    if age_days == 1:
+        return "updated 1 day ago"
+    return f"updated {age_days} days ago"
+
+
+def load_json(path: Path, default: dict | list) -> dict | list:
+    if not path.exists():
+        return default
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return default
+
+
 def load_historical() -> dict:
-    if not HISTORICAL_PATH.exists():
-        return {}
-    return json.loads(HISTORICAL_PATH.read_text())
+    data = load_json(HISTORICAL_PATH, {})
+    return data if isinstance(data, dict) else {}
 
 
 def dedupe_quotes(quotes: list[Quote]) -> list[Quote]:
@@ -124,10 +182,32 @@ def apply_outlier_filter(quotes: list[Quote], historical: dict) -> tuple[list[Qu
     return kept, anomalies
 
 
-def summarize_categories(quotes: list[Quote], source_health: list[SourceHealth]) -> dict:
+def recompute_source_health(raw_health: list[SourceHealth], now: datetime) -> list[dict]:
+    computed: list[dict] = []
+    for entry in raw_health:
+        payload = asdict(entry)
+        age_days = source_age_days(entry.last_success_timestamp, now=now)
+        sla_days = SOURCE_SLA_DAYS.get(entry.source)
+        if age_days is None:
+            status = "missing"
+        elif sla_days is not None and age_days <= sla_days:
+            status = "fresh"
+        else:
+            status = "stale"
+
+        payload["status"] = status
+        payload["age_days"] = age_days
+        payload["updated_days_ago"] = human_age(age_days)
+        computed.append(payload)
+    return computed
+
+
+def summarize_categories(quotes: list[Quote], source_health: list[dict]) -> dict:
     by_category: dict[str, list[Quote]] = defaultdict(list)
     for quote in quotes:
         by_category[quote.category].append(quote)
+
+    source_by_name = {s["source"]: s for s in source_health}
 
     summary: dict[str, dict] = {}
     for category, weight in CATEGORY_WEIGHTS.items():
@@ -136,13 +216,13 @@ def summarize_categories(quotes: list[Quote], source_health: list[SourceHealth])
 
         status = "missing"
         if cat_quotes:
-            category_statuses = [h.status for h in source_health if h.category == category]
-            if "fresh" in category_statuses:
-                status = "fresh"
-            elif "stale" in category_statuses:
-                status = "stale"
-            else:
-                status = "fresh"
+            category_statuses = [h["status"] for h in source_health if h["category"] == category]
+            status = "fresh" if "fresh" in category_statuses else "stale"
+
+        if category == "food":
+            apify = source_by_name.get("apify_loblaws")
+            if not apify or apify["status"] != "fresh":
+                status = "missing"
 
         summary[category] = {
             "proxy_level": level,
@@ -206,7 +286,10 @@ def compute_nowcast_mom(categories: dict, historical: dict) -> float | None:
     return round_or_none(normalized_change)
 
 
-def compute_confidence(coverage_ratio: float, anomalies: int) -> str:
+def compute_confidence(coverage_ratio: float, anomalies: int, blocked_conditions: list[str]) -> str:
+    if blocked_conditions:
+        return "low"
+
     if coverage_ratio >= 0.9:
         confidence = "high"
     elif coverage_ratio >= 0.6:
@@ -221,7 +304,7 @@ def compute_confidence(coverage_ratio: float, anomalies: int) -> str:
     return confidence
 
 
-def build_notes(categories: dict, anomalies: int, rejected_points: int) -> list[str]:
+def build_notes(categories: dict, anomalies: int, rejected_points: int, blocked_conditions: list[str]) -> list[str]:
     notes: list[str] = [
         "This is an experimental nowcast estimate and not an official CPI release.",
         "Methodology: weighted category proxy changes vs prior period baseline.",
@@ -237,12 +320,10 @@ def build_notes(categories: dict, anomalies: int, rejected_points: int) -> list[
         notes.append(f"Dropped {rejected_points} points via range checks.")
     if anomalies:
         notes.append(f"Dropped {anomalies} points via day-over-day anomaly filter.")
+    if blocked_conditions:
+        notes.append("Release gate failed: " + "; ".join(blocked_conditions))
 
     return notes
-
-
-def serialize_source_health(source_health: list[SourceHealth]) -> list[dict]:
-    return [asdict(entry) for entry in source_health]
 
 
 def collect_all_quotes() -> tuple[list[Quote], list[SourceHealth]]:
@@ -257,46 +338,73 @@ def collect_all_quotes() -> tuple[list[Quote], list[SourceHealth]]:
     return quotes, health
 
 
-def build_snapshot() -> dict:
+def evaluate_gate(snapshot: dict) -> list[str]:
+    blocked: list[str] = []
+    source_by_name = {s["source"]: s for s in snapshot["source_health"]}
+
+    apify = source_by_name.get("apify_loblaws")
+    apify_age = apify.get("age_days") if apify else None
+    if not apify or apify.get("status") == "missing" or apify_age is None or apify_age > APIFY_MAX_AGE_DAYS:
+        blocked.append("Gate A failed: APIFY missing or older than 14 days.")
+
+    for required in ("statcan_cpi_csv", "statcan_gas_csv"):
+        if source_by_name.get(required, {}).get("status") == "missing":
+            blocked.append(f"Gate B failed: required source {required} is missing.")
+
+    energy_ok = False
+    for source in ("oeb_scrape", "ieso_hoep"):
+        state = source_by_name.get(source, {}).get("status")
+        if state in {"fresh", "stale"}:
+            energy_ok = True
+            break
+    if not energy_ok:
+        blocked.append("Gate B failed: no usable energy source.")
+
+    for category, payload in snapshot["categories"].items():
+        min_points = CATEGORY_MIN_POINTS[category]
+        if payload["points"] < min_points:
+            blocked.append(f"Gate D failed: category {category} has fewer than {min_points} points.")
+
+    official_month = snapshot.get("official_cpi", {}).get("latest_release_month")
+    if not official_month:
+        blocked.append("Gate E failed: official CPI metadata missing latest release month.")
+
+    return blocked
+
+
+def validate_snapshot(snapshot: dict) -> list[str]:
+    try:
+        NowcastSnapshot.model_validate(snapshot)
+        return []
+    except Exception as err:
+        return [f"Gate C failed: snapshot schema validation error: {err}"]
+
+
+def ensure_release_db() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    historical = load_historical()
+    with sqlite3.connect(RELEASE_DB_PATH) as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS release_runs (
+                run_id TEXT PRIMARY KEY,
+                created_at TEXT NOT NULL,
+                status TEXT NOT NULL,
+                blocked_conditions TEXT NOT NULL,
+                snapshot_path TEXT NOT NULL
+            )
+            """
+        )
+        conn.commit()
 
-    raw_quotes, source_health = collect_all_quotes()
-    deduped = dedupe_quotes(raw_quotes)
-    range_valid, rejected_points = apply_range_checks(deduped)
-    filtered, anomalies = apply_outlier_filter(range_valid, historical)
 
-    categories = summarize_categories(filtered, source_health)
-    compute_daily_changes(categories, historical)
-
-    coverage_ratio = compute_coverage(categories)
-    nowcast_mom = compute_nowcast_mom(categories, historical)
-    confidence = compute_confidence(coverage_ratio, anomalies)
-
-    snapshot = {
-        "as_of_date": utc_now().date().isoformat(),
-        "timestamp": utc_now().replace(microsecond=0).isoformat(),
-        "headline": {
-            "nowcast_mom_pct": nowcast_mom,
-            "confidence": confidence,
-            "coverage_ratio": coverage_ratio,
-            "method_label": METHOD_LABEL,
-        },
-        "categories": categories,
-        "official_cpi": fetch_official_cpi_summary(),
-        "bank_of_canada": fetch_boc_cpi(),
-        "source_health": serialize_source_health(source_health),
-        "notes": build_notes(categories, anomalies, rejected_points),
-        "meta": {
-            "total_raw_points": len(raw_quotes),
-            "total_points_after_dedupe": len(deduped),
-            "total_points_after_quality_filters": len(filtered),
-            "anomaly_points": anomalies,
-            "rejected_points": rejected_points,
-        },
-    }
-
-    return snapshot
+def record_release_run(run_id: str, created_at: str, status: str, blocked_conditions: list[str], snapshot_path: str) -> None:
+    ensure_release_db()
+    with sqlite3.connect(RELEASE_DB_PATH) as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO release_runs (run_id, created_at, status, blocked_conditions, snapshot_path) VALUES (?, ?, ?, ?, ?)",
+            (run_id, created_at, status, json.dumps(blocked_conditions), snapshot_path),
+        )
+        conn.commit()
 
 
 def update_historical(snapshot: dict, historical: dict) -> dict:
@@ -321,28 +429,126 @@ def update_historical(snapshot: dict, historical: dict) -> dict:
                 "status": s["status"],
                 "category": s["category"],
                 "tier": s["tier"],
+                "age_days": s.get("age_days"),
             }
             for s in snapshot["source_health"]
         ],
+        "release": snapshot["release"],
     }
     return historical
 
 
+def build_snapshot() -> dict:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    RUNS_DIR.mkdir(parents=True, exist_ok=True)
+    historical = load_historical()
+
+    run_id = f"run_{uuid.uuid4().hex[:12]}"
+    now = utc_now().replace(microsecond=0)
+
+    raw_quotes, raw_source_health = collect_all_quotes()
+    source_health = recompute_source_health(raw_source_health, now=now)
+
+    deduped = dedupe_quotes(raw_quotes)
+    range_valid, rejected_points = apply_range_checks(deduped)
+    filtered, anomalies = apply_outlier_filter(range_valid, historical)
+
+    categories = summarize_categories(filtered, source_health)
+    compute_daily_changes(categories, historical)
+
+    coverage_ratio = compute_coverage(categories)
+    nowcast_mom = compute_nowcast_mom(categories, historical)
+
+    snapshot = {
+        "as_of_date": now.date().isoformat(),
+        "timestamp": now.isoformat(),
+        "headline": {
+            "nowcast_mom_pct": nowcast_mom,
+            "confidence": "low",
+            "coverage_ratio": coverage_ratio,
+            "method_label": METHOD_LABEL,
+        },
+        "categories": categories,
+        "official_cpi": fetch_official_cpi_summary(),
+        "bank_of_canada": fetch_boc_cpi(),
+        "source_health": source_health,
+        "notes": [],
+        "meta": {
+            "total_raw_points": len(raw_quotes),
+            "total_points_after_dedupe": len(deduped),
+            "total_points_after_quality_filters": len(filtered),
+            "anomaly_points": anomalies,
+            "rejected_points": rejected_points,
+        },
+        "release": {
+            "run_id": run_id,
+            "status": "started",
+            "lifecycle_states": ["started"],
+            "blocked_conditions": [],
+            "created_at": now.isoformat(),
+            "published_at": None,
+        },
+    }
+
+    snapshot["release"]["status"] = "completed"
+    snapshot["release"]["lifecycle_states"].append("completed")
+    blocked_conditions = evaluate_gate(snapshot)
+    blocked_conditions.extend(validate_snapshot(snapshot))
+
+    status = "published" if not blocked_conditions else "failed_gate"
+    snapshot["release"]["status"] = status
+    snapshot["release"]["lifecycle_states"].append(status)
+    snapshot["release"]["blocked_conditions"] = blocked_conditions
+    if status == "published":
+        snapshot["release"]["published_at"] = now.isoformat()
+
+    snapshot["headline"]["confidence"] = compute_confidence(coverage_ratio, anomalies, blocked_conditions)
+    snapshot["notes"] = build_notes(categories, anomalies, rejected_points, blocked_conditions)
+    return snapshot
+
+
 def write_outputs(snapshot: dict) -> None:
     historical = load_historical()
-    historical = update_historical(snapshot, historical)
+    run_id = snapshot["release"]["run_id"]
+    run_path = RUNS_DIR / f"{run_id}.json"
 
     LATEST_PATH.write_text(json.dumps(snapshot, indent=2))
-    HISTORICAL_PATH.write_text(json.dumps(historical, indent=2))
+    run_path.write_text(json.dumps(snapshot, indent=2))
+
+    status = snapshot["release"]["status"]
+    if status == "published":
+        PUBLISHED_LATEST_PATH.write_text(json.dumps(snapshot, indent=2))
+        historical = update_historical(snapshot, historical)
+        HISTORICAL_PATH.write_text(json.dumps(historical, indent=2))
+
+    record_release_run(
+        run_id=run_id,
+        created_at=snapshot["release"]["created_at"],
+        status=status,
+        blocked_conditions=snapshot["release"]["blocked_conditions"],
+        snapshot_path=str(run_path),
+    )
 
 
-if __name__ == "__main__":
+def main() -> int:
     snap = build_snapshot()
     write_outputs(snap)
-    print(f"Wrote {LATEST_PATH} and {HISTORICAL_PATH}")
+    status = snap["release"]["status"]
+    blocked = snap["release"].get("blocked_conditions", [])
+    print(f"Run status: {status}")
     print(
         "Summary: "
         f"confidence={snap['headline']['confidence']} coverage={snap['headline']['coverage_ratio']} "
         f"sources_ok={sum(1 for s in snap['source_health'] if s['status'] in {'fresh', 'stale'})}/"
         f"{len(snap['source_health'])}"
     )
+    if blocked:
+        print("Blocked conditions:")
+        for reason in blocked:
+            print(f"- {reason}")
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

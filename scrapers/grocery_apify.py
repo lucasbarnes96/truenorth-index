@@ -1,14 +1,12 @@
-"""Grocery scraper using Apify (Loblaws Grocery Scraper).
-
-Uses the Apify Client to run the 'Loblaws Grocery Scraper' actor.
-Ref: https://apify.com/ko_red/loblaws-grocery-scraper
-
-This is Phase 3 of the implementation plan.
-"""
+"""Grocery scraper using Apify actors with redundancy and schema checks."""
 from __future__ import annotations
 
+import hashlib
 import os
-from datetime import datetime, timezone
+import re
+import sys
+from datetime import date, datetime, timezone
+from typing import Any
 
 try:
     from apify_client import ApifyClient
@@ -18,28 +16,108 @@ except ImportError:
 from .common import utc_now_iso
 from .types import Quote, SourceHealth
 
-# Actor ID for "Loblaws Grocery Scraper"
-ACTOR_ID = "sunny_eternity/loblaws-grocery-scraper"
+DEFAULT_ACTOR_IDS = [
+    "sunny_eternity/loblaws-grocery-scraper",
+    "ko_red/loblaws-grocery-scraper",
+]
+DEFAULT_CATEGORY_URL = "https://www.realcanadiansuperstore.ca/food/dairy-eggs/c/28003"
 
-# Loblaws banners to target
-BANNERS = ["superstore", "nofrills"]
+
+def _load_token() -> str | None:
+    token = os.getenv("APIFY_TOKEN")
+    if token:
+        return token
+
+    if os.path.exists(".env"):
+        try:
+            with open(".env", "r", encoding="utf-8") as handle:
+                for line in handle:
+                    line = line.strip()
+                    if line.startswith("APIFY_TOKEN="):
+                        return line.split("=", 1)[1].strip().strip('"').strip("'")
+        except Exception:
+            return None
+    return None
+
+
+def _actor_ids() -> list[str]:
+    raw = os.getenv("APIFY_ACTOR_IDS", "").strip()
+    if not raw:
+        return DEFAULT_ACTOR_IDS
+    values = [x.strip() for x in raw.split(",")]
+    return [x for x in values if x]
+
+
+def _parse_price(item: dict[str, Any]) -> float | None:
+    price = item.get("price")
+    if isinstance(price, dict):
+        for key in ("value", "amount", "current"):
+            value = price.get(key)
+            if value is None:
+                continue
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                continue
+    elif price is not None:
+        try:
+            return float(price)
+        except (TypeError, ValueError):
+            pass
+
+    for key in ("currentPrice", "salePrice", "priceValue"):
+        value = item.get(key)
+        if value is None:
+            continue
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _parse_name(item: dict[str, Any]) -> str | None:
+    for key in ("name", "title", "productName", "displayName"):
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _parse_unit(item: dict[str, Any]) -> str:
+    for key in ("packageSize", "size", "unitText", "unit"):
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            cleaned = re.sub(r"\s+", " ", value.strip())
+            return cleaned.lower()
+    return "unknown_unit"
+
+
+def normalize_apify_item(item: dict[str, Any], observed: date, source_run_id: str) -> Quote | None:
+    name = _parse_name(item)
+    value = _parse_price(item)
+    if not name or value is None or value <= 0:
+        return None
+
+    unit = _parse_unit(item)
+    base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    canonical = f"{base}|{unit}"
+    suffix = hashlib.sha1(canonical.encode("utf-8")).hexdigest()[:10]
+    item_id = f"{base[:50]}-{suffix}"
+
+    return Quote(
+        category="food",
+        item_id=item_id,
+        value=float(value),
+        observed_at=observed,
+        source="apify_loblaws",
+        source_run_id=source_run_id,
+    )
 
 
 def scrape_grocery_apify() -> tuple[list[Quote], list[SourceHealth]]:
-    """Run the Apify Loblaws scraper to get fresh grocery prices."""
-    token = os.getenv("APIFY_TOKEN")
-    
-    # Manually load from .env if not found in environment
-    if not token and os.path.exists(".env"):
-        try:
-            with open(".env", "r") as f:
-                for line in f:
-                    line = line.strip()
-                    if line.startswith("APIFY_TOKEN="):
-                        token = line.split("=", 1)[1].strip().strip('"').strip("'")
-                        break
-        except Exception:
-            pass
+    """Run Apify actor(s) with deterministic fallback."""
+    token = _load_token()
 
     if not token:
         return [], [
@@ -50,6 +128,7 @@ def scrape_grocery_apify() -> tuple[list[Quote], list[SourceHealth]]:
                 status="missing",
                 last_success_timestamp=None,
                 detail="APIFY_TOKEN not found in environment.",
+                source_run_id=None,
             )
         ]
 
@@ -62,74 +141,98 @@ def scrape_grocery_apify() -> tuple[list[Quote], list[SourceHealth]]:
                 status="missing",
                 last_success_timestamp=None,
                 detail="apify-client library not installed.",
+                source_run_id=None,
             )
         ]
 
-    quotes: list[Quote] = []
-    health: list[SourceHealth] = []
-
-    try:
-        client = ApifyClient(token)
-
-        # Use a category URL instead of search queries
-        category_url = "https://www.realcanadiansuperstore.ca/food/dairy-eggs/c/28003"
-        
-        # Configure the run
-        run_input = {
-            "categoryUrl": category_url,
-            "maxItems": 50,  # Limit to save CU
-            "proxyConfig": {"useApifyProxy": True},
-        }
-
-        # Run the actor
-        run = client.actor(ACTOR_ID).call(run_input=run_input)
-
-        # Fetch results
-        dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
-        
-        observed = datetime.now(timezone.utc).date()
-        
-        for item in dataset_items:
-            price = item.get("price", {}).get("value")
-            name = item.get("name")
-            if price and name:
-                # Clean up the name for item_id
-                item_id = name.lower().split(",")[0].replace(" ", "_").strip()
-                # Basic validation
-                if len(item_id) > 50:
-                    item_id = item_id[:50]
-                
-                quotes.append(
-                    Quote(
-                        category="food",
-                        item_id=item_id,
-                        value=float(price),
-                        observed_at=observed,
-                        source="apify_loblaws",
-                    )
-                )
-
-        health.append(
-            SourceHealth(
-                source="apify_loblaws",
-                category="food",
-                tier=1,
-                status="fresh" if quotes else "missing",
-                last_success_timestamp=utc_now_iso() if quotes else None,
-                detail=f"Collected {len(quotes)} prices from Apify Loblaws scraper.",
-            )
-        )
-
-    except Exception as err:
-        health.append(
+    if sys.version_info >= (3, 13):
+        return [], [
             SourceHealth(
                 source="apify_loblaws",
                 category="food",
                 tier=1,
                 status="missing",
                 last_success_timestamp=None,
-                detail=f"Apify run failed: {err}",
+                detail="Python 3.13 is not supported for apify-client in this project. Use Python 3.11.",
+                source_run_id=None,
             )
-        )
+        ]
 
-    return quotes, health
+    quotes: list[Quote] = []
+    errors: list[str] = []
+    observed = datetime.now(timezone.utc).date()
+    category_url = os.getenv("APIFY_CATEGORY_URL", DEFAULT_CATEGORY_URL)
+    max_items = int(os.getenv("APIFY_MAX_ITEMS", "50"))
+    actor_ids = _actor_ids()
+    source_run_id: str | None = None
+
+    try:
+        # NOTE: apify-client currently crashes on Python 3.13 in some envs.
+        # Pinning runtime to 3.11 in CI/prod avoids this failure mode.
+        client = ApifyClient(token)
+    except BaseException as err:  # pragma: no cover - runtime dependent
+        return [], [
+            SourceHealth(
+                source="apify_loblaws",
+                category="food",
+                tier=1,
+                status="missing",
+                last_success_timestamp=None,
+                detail=f"Apify client init failed: {err}",
+                source_run_id=None,
+            )
+        ]
+
+    for actor_id in actor_ids:
+        run_input = {
+            "categoryUrl": category_url,
+            "maxItems": max_items,
+            "proxyConfig": {"useApifyProxy": True},
+        }
+
+        try:
+            run = client.actor(actor_id).call(run_input=run_input)
+            source_run_id = str(run.get("id") or run.get("defaultDatasetId") or "")
+            dataset_id = run.get("defaultDatasetId")
+            if not dataset_id:
+                errors.append(f"{actor_id}: missing defaultDatasetId")
+                continue
+            dataset_items = client.dataset(dataset_id).list_items(limit=max_items).items
+
+            for item in dataset_items:
+                if not isinstance(item, dict):
+                    continue
+                quote = normalize_apify_item(item, observed=observed, source_run_id=source_run_id or "")
+                if quote is not None:
+                    quotes.append(quote)
+
+            if quotes:
+                return quotes, [
+                    SourceHealth(
+                        source="apify_loblaws",
+                        category="food",
+                        tier=1,
+                        status="fresh",
+                        last_success_timestamp=utc_now_iso(),
+                        detail=f"Collected {len(quotes)} prices from actor {actor_id}.",
+                        source_run_id=source_run_id,
+                    )
+                ]
+            errors.append(f"{actor_id}: no valid records returned")
+        except BaseException as err:  # pragma: no cover - network/runtime dependent
+            errors.append(f"{actor_id}: {err}")
+
+    detail = "Apify run failed for all actors."
+    if errors:
+        detail = detail + " " + " | ".join(errors[:3])
+    return [], [
+        SourceHealth(
+            source="apify_loblaws",
+            category="food",
+            tier=1,
+            status="missing",
+            last_success_timestamp=None,
+            detail=detail,
+            source_run_id=source_run_id,
+        )
+    ]

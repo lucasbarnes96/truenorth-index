@@ -11,6 +11,7 @@ class Quote:
     value: float
     observed_at: date
     source: str
+    source_run_id: str | None = None
 
 
 @dataclass
@@ -21,3 +22,4 @@ class SourceHealth:
     status: str
     last_success_timestamp: str | None
     detail: str
+    source_run_id: str | None = None

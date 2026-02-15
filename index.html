@@ -115,6 +115,14 @@
     .status-fresh { color: var(--good); }
     .status-stale { color: var(--warn); }
     .status-missing { color: var(--bad); }
+    .banner {
+      border-left: 4px solid var(--warn);
+      background: rgba(255, 176, 32, 0.15);
+      color: #ffd59a;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      display: none;
+    }
 
     ul {
       margin-left: 1.2rem;
@@ -161,6 +169,7 @@
         <div class="small">All times in UTC</div>
       </article>
     </section>
+    <section id="release-banner" class="banner"></section>
 
     <section class="card">
       <h2>Nowcast Trend (Recent)</h2>
@@ -182,6 +191,7 @@
             <th>Tier</th>
             <th>Status</th>
             <th>Last Success</th>
+            <th>Age</th>
           </tr>
         </thead>
         <tbody id="source-health-body"></tbody>
@@ -211,9 +221,16 @@
       return `status-${status || "missing"}`;
     }
 
+    function fetchJsonWithFallback(primary, fallback) {
+      return fetch(primary).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      }).catch(() => fetch(fallback).then(r => r.json()));
+    }
+
     Promise.all([
-      fetch("data/latest.json").then(r => r.json()),
-      fetch("data/historical.json").then(r => r.json()),
+      fetchJsonWithFallback("/v1/nowcast/latest", "data/latest.json"),
+      fetchJsonWithFallback("/v1/nowcast/history", "data/historical.json"),
     ]).then(([latest, historical]) => {
       const headline = latest.headline?.nowcast_mom_pct;
       document.getElementById("headline").textContent = pct(headline, 3);
@@ -231,6 +248,13 @@
       document.getElementById("release-month").textContent = `Latest release: ${maybe(latest.official_cpi?.latest_release_month)}`;
 
       document.getElementById("asof").textContent = latest.as_of_date || "--";
+      const release = latest.release || {};
+      if (release.status && release.status !== "published") {
+        const banner = document.getElementById("release-banner");
+        banner.style.display = "block";
+        const reasons = (release.blocked_conditions || []).join(" | ");
+        banner.textContent = `Release gate status: ${release.status}. ${reasons}`;
+      }
 
       const notesEl = document.getElementById("notes");
       (latest.notes || []).forEach(note => {
@@ -248,12 +272,17 @@
           <td>${row.tier}</td>
           <td class="${statusClass(row.status)}">${row.status}</td>
           <td>${row.last_success_timestamp || "--"}</td>
+          <td>${row.updated_days_ago || (row.age_days !== undefined && row.age_days !== null ? `updated ${row.age_days} days ago` : "--")}</td>
         `;
         tbody.appendChild(tr);
       });
 
-      const days = Object.keys(historical).sort().slice(-30);
-      const nowcastVals = days.map(d => historical[d].headline?.nowcast_mom_pct ?? null);
+      const histItems = Array.isArray(historical.items)
+        ? historical.items
+        : Object.keys(historical).sort().map(day => ({ date: day, ...historical[day] }));
+      const items = histItems.slice(-30);
+      const days = items.map(d => d.date);
+      const nowcastVals = items.map(d => d.headline?.nowcast_mom_pct ?? null);
 
       new Chart(document.getElementById("trendChart"), {
         type: "line",

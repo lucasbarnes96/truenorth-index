@@ -1,3 +1,7 @@
 requests>=2.31.0
 beautifulsoup4>=4.12.0
-apify-client
+apify-client==2.4.1
+impit==0.11.0
+fastapi==0.116.1
+uvicorn==0.35.0
+pydantic==2.11.7

@@ -1,73 +1,92 @@
 # True Inflation Canada
 
-A free, real-time Canadian inflation tracker that aggregates data from official and alternative sources to provide a transparent view of price changes.
+Real-time Canadian inflation nowcast with strict publish gates and transparent source health.
 
-![Dashboard Preview](dashboard_preview.png)
+## What changed
+- API-first architecture (`FastAPI + Pydantic`).
+- Strict release gate (runs can fail and stay unpublished).
+- APIFY is required for food and must be recent (<=14 days).
+- Weekly APIFY cadence for free-tier cost control.
+- Source health includes explicit age text (`updated X days ago`).
 
-## 📊 Live Data Sources (100% Free)
+## Runtime and dependencies
+- Python `3.11` is required (`.python-version`).
+- Install pinned dependencies:
 
-We track inflation across 4 key categories using **zero-cost** data pipelines:
+```bash
+pip install -r requirements.txt
+```
 
-| Category | Source | Method | Status |
-|----------|--------|--------|--------|
-| **Headline** | **Bank of Canada** | Valet API (`V41690973`) | ✅ Live |
-| **Food** | **OpenFoodFacts** | Public API | ✅ Live |
-|          | **StatCan Retail**| CSV Download (22 staples) | ✅ Live |
-|          | **Loblaws** | Apify Scraper (Superstore) | ✅ Live |
-| **Housing** | **StatCan** | CSV Download (Shelter/Rent/Owned) | ✅ Live |
-| **Transport**| **StatCan** | CSV Download (Gasoline) | ✅ Live |
-| **Energy** | **OEB** | Web Scraper (Ontario Rates) | ✅ Live |
+Optional fully pinned install:
 
-## 🚀 Getting Started
+```bash
+pip install -r requirements.lock
+```
 
-### Prerequisites
-- Python 3.9+
-- (Optional) Apify Account for daily grocery scraping
+## Environment
+Create `.env`:
 
-### Installation
+```bash
+APIFY_TOKEN=your_token
+# Optional overrides
+# APIFY_ACTOR_IDS=sunny_eternity/loblaws-grocery-scraper,ko_red/loblaws-grocery-scraper
+# APIFY_CATEGORY_URL=https://www.realcanadiansuperstore.ca/food/dairy-eggs/c/28003
+# APIFY_MAX_ITEMS=50
+```
 
-1.  **Clone the repo**
-    ```bash
-    git clone https://github.com/lucasbarnes96/truenorth-index.git true-inflation-canada
-    cd true-inflation-canada
-    ```
+## Run ingestion
 
-2.  **Install dependencies**
-    ```bash
-    pip install -r requirements.txt
-    ```
-    *(Note: You might need `pip install apify-client` manually)*
+```bash
+python3 process.py
+```
 
-3.  **Setup Apify (Optional)**
-    - Sign up at [Apify](https://apify.com/).
-    - Subscribe to the `sunny_eternity/loblaws-grocery-scraper` actor.
-    - Click **Start** once to initialize it.
-    - Save your token in `.env`: `APIFY_TOKEN=...`
-    - See [APIFY_SETUP.md](APIFY_SETUP.md) for details.
+Output artifacts:
+- `data/latest.json` (latest run, includes failed gates)
+- `data/published_latest.json` (last gate-passing run)
+- `data/historical.json` (published history)
+- `data/runs/*.json` (versioned run snapshots)
+- `data/releases.db` (run metadata table)
 
-### Usage
+Exit code:
+- `0` when published
+- `1` when gate fails
 
-1.  **Run the Data Pipeline**
-    ```bash
-    python3 process.py
-    ```
-    This fetches data from all sources, processes it, and updates `data/latest.json`.
+## Run API
 
-2.  **Launch the Dashboard**
-    ```bash
-    python3 -m http.server
-    ```
-    Open `http://localhost:8000` in your browser.
+```bash
+uvicorn api.main:app --reload
+```
 
-## 🛠️ Architecture
+Endpoints:
+- `GET /v1/nowcast/latest`
+- `GET /v1/nowcast/history?start=YYYY-MM-DD&end=YYYY-MM-DD`
+- `GET /v1/sources/health`
+- `GET /v1/releases/latest`
+- `GET /v1/methodology`
 
-- **`scrapers/`**: Individual scripts for each data source.
-  - `bank_of_canada.py`: Fetches official CPI.
-  - `grocery_apify.py`: Connects to Loblaws via Apify.
-  - `food_statcan.py`: Downloads retail food prices.
-- **`process.py`**: Main orchestrator. Aggregates quotes, handles outliers, and calculates the index.
-- **`index.html`**: Zero-dependency dashboard (Chart.js + Vanilla JS).
-- **`data/`**: JSON storage for latest and historical data (no database required).
+## Dashboard
+Serve static UI and point it to API:
 
-## 📄 License
-MIT
+```bash
+python3 -m http.server
+```
+
+Open `http://localhost:8000`. The dashboard fetches from `/v1/...` and expects the API on the same origin/reverse proxy.
+
+## Release gate policy
+A run is blocked (`failed_gate`) if any condition fails:
+1. APIFY missing or older than 14 days.
+2. Required sources missing (`statcan_cpi_csv`, `statcan_gas_csv`, and at least one energy source).
+3. Snapshot schema validation fails.
+4. Category point minimums fail.
+5. Official CPI metadata missing (`latest_release_month`).
+
+## CI
+GitHub Actions (`.github/workflows/scrape.yml`):
+- Uses Python 3.11.
+- Runs ingestion + tests.
+- Enforces gate with `scripts/check_release_gate.py`.
+- Commits generated data only on published runs.
+
+## Notes
+This remains an experimental nowcast and is not an official CPI release.

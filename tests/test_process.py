@@ -8,6 +8,7 @@ from process import (
     compute_confidence,
     compute_coverage,
     dedupe_quotes,
+    evaluate_gate,
 )
 from scrapers.types import Quote
 
@@ -32,11 +33,49 @@ class ProcessTests(unittest.TestCase):
         self.assertLess(coverage, 1)
 
     def test_compute_confidence(self) -> None:
-        self.assertEqual("high", compute_confidence(0.95, 0))
-        self.assertEqual("medium", compute_confidence(0.7, 0))
-        self.assertEqual("low", compute_confidence(0.4, 0))
-        self.assertEqual("medium", compute_confidence(0.95, 3))
-        self.assertEqual("low", compute_confidence(0.7, 3))
+        self.assertEqual("high", compute_confidence(0.95, 0, []))
+        self.assertEqual("medium", compute_confidence(0.7, 0, []))
+        self.assertEqual("low", compute_confidence(0.4, 0, []))
+        self.assertEqual("medium", compute_confidence(0.95, 3, []))
+        self.assertEqual("low", compute_confidence(0.7, 3, []))
+        self.assertEqual("low", compute_confidence(0.95, 0, ["gate failed"]))
+
+    def test_evaluate_gate_pass(self) -> None:
+        snapshot = {
+            "source_health": [
+                {"source": "apify_loblaws", "status": "fresh", "age_days": 1},
+                {"source": "statcan_cpi_csv", "status": "fresh", "age_days": 2},
+                {"source": "statcan_gas_csv", "status": "fresh", "age_days": 2},
+                {"source": "oeb_scrape", "status": "fresh", "age_days": 0},
+            ],
+            "categories": {
+                "food": {"points": 10},
+                "housing": {"points": 3},
+                "transport": {"points": 1},
+                "energy": {"points": 1},
+            },
+            "official_cpi": {"latest_release_month": "2025-12"},
+        }
+        self.assertEqual([], evaluate_gate(snapshot))
+
+    def test_evaluate_gate_fail_when_apify_stale(self) -> None:
+        snapshot = {
+            "source_health": [
+                {"source": "apify_loblaws", "status": "stale", "age_days": 20},
+                {"source": "statcan_cpi_csv", "status": "fresh", "age_days": 2},
+                {"source": "statcan_gas_csv", "status": "fresh", "age_days": 2},
+                {"source": "oeb_scrape", "status": "fresh", "age_days": 0},
+            ],
+            "categories": {
+                "food": {"points": 10},
+                "housing": {"points": 3},
+                "transport": {"points": 1},
+                "energy": {"points": 1},
+            },
+            "official_cpi": {"latest_release_month": "2025-12"},
+        }
+        blocked = evaluate_gate(snapshot)
+        self.assertTrue(any("Gate A failed" in item for item in blocked))
 
 
 if __name__ == "__main__":
