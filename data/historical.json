@@ -1,0 +1,57 @@
+{
+  "2026-02-15": {
+    "headline": {
+      "nowcast_mom_pct": null,
+      "confidence": "low",
+      "coverage_ratio": 0.0
+    },
+    "categories": {
+      "food": {
+        "proxy_level": null,
+        "daily_change_pct": null,
+        "status": "missing"
+      },
+      "housing": {
+        "proxy_level": null,
+        "daily_change_pct": null,
+        "status": "missing"
+      },
+      "transport": {
+        "proxy_level": null,
+        "daily_change_pct": null,
+        "status": "missing"
+      },
+      "energy": {
+        "proxy_level": null,
+        "daily_change_pct": null,
+        "status": "missing"
+      }
+    },
+    "source_health": [
+      {
+        "source": "openfoodfacts_api",
+        "status": "missing",
+        "category": "food",
+        "tier": 1
+      },
+      {
+        "source": "caa_scrape",
+        "status": "missing",
+        "category": "transport",
+        "tier": 2
+      },
+      {
+        "source": "statcan_cpi_table",
+        "status": "missing",
+        "category": "housing",
+        "tier": 1
+      },
+      {
+        "source": "oeb_scrape",
+        "status": "missing",
+        "category": "energy",
+        "tier": 2
+      }
+    ]
+  }
+}

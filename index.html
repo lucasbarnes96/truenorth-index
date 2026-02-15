@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrueNorth Index - Daily CPI Nowcast (Estimate)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-a: #071322;
+      --bg-b: #12304b;
+      --card: rgba(255, 255, 255, 0.07);
+      --border: rgba(255, 255, 255, 0.15);
+      --text: #f0f4f8;
+      --muted: #94a9bc;
+      --accent: #48bfe3;
+      --good: #2ad39c;
+      --warn: #ffb020;
+      --bad: #ff6b6b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: radial-gradient(circle at top left, var(--bg-b), var(--bg-a) 65%);
+      color: var(--text);
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      min-height: 100vh;
+      padding: 1.25rem;
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 1rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem;
+      backdrop-filter: blur(6px);
+    }
+
+    .title {
+      margin-bottom: 0.25rem;
+      font-size: clamp(1.5rem, 4vw, 2.4rem);
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .kicker {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+
+    .metric {
+      font-size: 1.9rem;
+      font-weight: 700;
+      margin-top: 0.3rem;
+    }
+
+    .small {
+      margin-top: 0.35rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .pill.high { background: rgba(42, 211, 156, 0.2); color: var(--good); }
+    .pill.medium { background: rgba(255, 176, 32, 0.2); color: var(--warn); }
+    .pill.low { background: rgba(255, 107, 107, 0.2); color: var(--bad); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.75rem;
+    }
+
+    th, td {
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      padding: 0.55rem 0.25rem;
+      font-size: 0.92rem;
+    }
+
+    th { color: var(--muted); font-weight: 500; }
+
+    .status-fresh { color: var(--good); }
+    .status-stale { color: var(--warn); }
+    .status-missing { color: var(--bad); }
+
+    ul {
+      margin-left: 1.2rem;
+      margin-top: 0.65rem;
+      color: var(--muted);
+      display: grid;
+      gap: 0.3rem;
+    }
+
+    footer {
+      font-size: 0.86rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1 class="title">TrueNorth Index</h1>
+      <p class="subtitle">Daily CPI Nowcast (Estimate) - Canada - Updated at 06:00 UTC</p>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <div class="kicker">Headline</div>
+        <div class="metric" id="headline">--</div>
+        <div class="small" id="method">--</div>
+      </article>
+      <article class="card">
+        <div class="kicker">Confidence</div>
+        <div class="metric"><span id="confidence-pill" class="pill low">--</span></div>
+        <div class="small" id="coverage">Coverage: --</div>
+      </article>
+      <article class="card">
+        <div class="kicker">Official CPI</div>
+        <div class="metric" id="official">--</div>
+        <div class="small" id="release-month">Latest release: --</div>
+      </article>
+      <article class="card">
+        <div class="kicker">As Of</div>
+        <div class="metric" id="asof">--</div>
+        <div class="small">All times in UTC</div>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>Nowcast Trend (Recent)</h2>
+      <canvas id="trendChart"></canvas>
+    </section>
+
+    <section class="card">
+      <h2>Category Contribution Snapshot</h2>
+      <canvas id="categoryChart"></canvas>
+    </section>
+
+    <section class="card">
+      <h2>Source Health</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Category</th>
+            <th>Tier</th>
+            <th>Status</th>
+            <th>Last Success</th>
+          </tr>
+        </thead>
+        <tbody id="source-health-body"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Methodology and Caveats</h2>
+      <ul id="notes"></ul>
+      <footer>
+        Scope: National only (no provincial split), no prediction card, no external API endpoint in V1.
+      </footer>
+    </section>
+  </main>
+
+  <script>
+    function pct(v, digits = 2) {
+      if (v === null || v === undefined || Number.isNaN(v)) return "--";
+      return `${v.toFixed(digits)}%`;
+    }
+
+    function maybe(v) {
+      return v ?? "--";
+    }
+
+    function statusClass(status) {
+      return `status-${status || "missing"}`;
+    }
+
+    Promise.all([
+      fetch("data/latest.json").then(r => r.json()),
+      fetch("data/historical.json").then(r => r.json()),
+    ]).then(([latest, historical]) => {
+      const headline = latest.headline?.nowcast_mom_pct;
+      document.getElementById("headline").textContent = pct(headline, 3);
+      document.getElementById("method").textContent = latest.headline?.method_label || "--";
+
+      const confidence = (latest.headline?.confidence || "low").toLowerCase();
+      const pill = document.getElementById("confidence-pill");
+      pill.className = `pill ${confidence}`;
+      pill.textContent = confidence;
+      document.getElementById("coverage").textContent = `Coverage: ${(100 * (latest.headline?.coverage_ratio || 0)).toFixed(1)}%`;
+
+      const mom = latest.official_cpi?.mom_pct;
+      const yoy = latest.official_cpi?.yoy_pct;
+      document.getElementById("official").textContent = `MoM ${pct(mom)} / YoY ${pct(yoy)}`;
+      document.getElementById("release-month").textContent = `Latest release: ${maybe(latest.official_cpi?.latest_release_month)}`;
+
+      document.getElementById("asof").textContent = latest.as_of_date || "--";
+
+      const notesEl = document.getElementById("notes");
+      (latest.notes || []).forEach(note => {
+        const li = document.createElement("li");
+        li.textContent = note;
+        notesEl.appendChild(li);
+      });
+
+      const tbody = document.getElementById("source-health-body");
+      (latest.source_health || []).forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.source}</td>
+          <td>${row.category}</td>
+          <td>${row.tier}</td>
+          <td class="${statusClass(row.status)}">${row.status}</td>
+          <td>${row.last_success_timestamp || "--"}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const days = Object.keys(historical).sort().slice(-30);
+      const nowcastVals = days.map(d => historical[d].headline?.nowcast_mom_pct ?? null);
+
+      new Chart(document.getElementById("trendChart"), {
+        type: "line",
+        data: {
+          labels: days,
+          datasets: [{
+            label: "Daily nowcast MoM %",
+            data: nowcastVals,
+            borderColor: "#48bfe3",
+            backgroundColor: "rgba(72, 191, 227, 0.18)",
+            fill: true,
+            tension: 0.25,
+          }],
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: "index", intersect: false },
+          scales: {
+            y: { ticks: { color: "#94a9bc" }, grid: { color: "rgba(255,255,255,0.1)" } },
+            x: { ticks: { color: "#94a9bc" }, grid: { color: "rgba(255,255,255,0.1)" } },
+          },
+          plugins: { legend: { labels: { color: "#f0f4f8" } } },
+        },
+      });
+
+      const categoryNames = Object.keys(latest.categories || {});
+      const contributions = categoryNames.map(k => {
+        const c = latest.categories[k];
+        if (c.proxy_level === null || c.daily_change_pct === null) return 0;
+        return c.weight * c.daily_change_pct;
+      });
+
+      new Chart(document.getElementById("categoryChart"), {
+        type: "bar",
+        data: {
+          labels: categoryNames,
+          datasets: [{
+            label: "Weighted daily contribution",
+            data: contributions,
+            backgroundColor: ["#5ec576", "#48bfe3", "#ffb020", "#ff6b6b"],
+          }],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { ticks: { color: "#94a9bc" }, grid: { color: "rgba(255,255,255,0.1)" } },
+            x: { ticks: { color: "#94a9bc" }, grid: { color: "rgba(255,255,255,0.1)" } },
+          },
+          plugins: { legend: { labels: { color: "#f0f4f8" } } },
+        },
+      });
+    }).catch(err => {
+      document.body.innerHTML = `<main class="wrap"><section class="card"><h2>Data load error</h2><p>${String(err)}</p></section></main>`;
+    });
+  </script>
+</body>
+</html>
