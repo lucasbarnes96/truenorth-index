@@ -1,8 +1,7 @@
-"""Transport category scraper — StatCan monthly gasoline prices.
+"""StatCan retail food prices — Table 18-10-0245-01.
 
-Uses StatCan table 18-10-0001-01 (Monthly average retail prices for
-gasoline and fuel oil) as a CSV download. This replaces the CAA
-web scrape that was returning 403 Forbidden.
+Monthly average retail prices for selected products by province.
+Free CSV download, no API key required.
 """
 from __future__ import annotations
 
@@ -15,29 +14,46 @@ from datetime import datetime, timezone
 from .common import utc_now_iso, USER_AGENT
 from .types import Quote, SourceHealth
 
-# StatCan table for monthly gasoline/fuel prices
-STATCAN_GAS_URL = "https://www150.statcan.gc.ca/n1/tbl/csv/18100001-eng.zip"
+STATCAN_FOOD_URL = "https://www150.statcan.gc.ca/n1/tbl/csv/18100245-eng.zip"
 
-# Target product types — use substring matching since names vary
-TARGET_KEYWORDS = [
-    "regular unleaded gasoline",
-    "premium unleaded gasoline",
-    "diesel",
-    "furnace oil",
-    "fuel oil",
-]
+# Target food items that serve as good basket proxies
+TARGET_FOOD_ITEMS = {
+    "Eggs, 1 dozen",
+    "Milk, partly skimmed (2%), 2 litres",
+    "Butter, 454 grams",
+    "Bread, white, 675 grams",
+    "Chicken, whole",
+    "Ground beef, regular",
+    "Apples, per kilogram",
+    "Bananas, per kilogram",
+    "Potatoes, per kilogram",
+    "Tomatoes, per kilogram",
+    "Onions, per kilogram",
+    "Rice, white, 2 kilograms",
+    "Sugar, white, 2 kilograms",
+    "Flour, white, all purpose, 2.5 kilograms",
+    "Canned soup, 284 millilitres",
+    "Macaroni or spaghetti, 500 grams",
+    "Orange juice, frozen concentrate, 355 millilitres",
+    "Wieners, 450 grams",
+    "Bacon, 500 grams",
+    "Cheddar cheese, 250 grams",
+    "Evaporated milk, 385 millilitres",
+    "Coffee, roasted, 300 grams",
+}
 
 
-def scrape_transport() -> tuple[list[Quote], list[SourceHealth]]:
+def scrape_food_statcan() -> tuple[list[Quote], list[SourceHealth]]:
+    """Scrape official monthly retail food prices from StatCan."""
     quotes: list[Quote] = []
     health: list[SourceHealth] = []
 
     try:
         req = urllib.request.Request(
-            STATCAN_GAS_URL,
+            STATCAN_FOOD_URL,
             headers={"User-Agent": USER_AGENT},
         )
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=120) as response:
             data = response.read()
 
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
@@ -50,14 +66,13 @@ def scrape_transport() -> tuple[list[Quote], list[SourceHealth]]:
                 )
                 rows = list(csv.DictReader(decoded))
 
-        # Find the latest fuel prices for Canada
+        # Find the latest price for each target product in Canada
         latest_by_product: dict[str, tuple[str, float]] = {}
         for row in rows:
             if row.get("GEO") != "Canada":
                 continue
-            product = (row.get("Type of fuel") or row.get("Products") or "").strip()
-            product_lower = product.lower()
-            if not any(kw in product_lower for kw in TARGET_KEYWORDS):
+            product = (row.get("Products") or "").strip()
+            if product not in TARGET_FOOD_ITEMS:
                 continue
             value_raw = row.get("VALUE")
             ref_date = row.get("REF_DATE")
@@ -73,37 +88,33 @@ def scrape_transport() -> tuple[list[Quote], list[SourceHealth]]:
 
         observed = datetime.now(timezone.utc).date()
         for product, (_, value) in latest_by_product.items():
-            # Convert product name to a clean item_id
-            item_id = product.lower()
-            for remove in [" at self service filling stations", "gasoline", "fuel"]:
-                item_id = item_id.replace(remove, "")
-            item_id = "_".join(item_id.split()).strip("_")
-
+            # Create a clean item_id from the product name
+            item_id = product.lower().split(",")[0].strip().replace(" ", "_")
             quotes.append(
                 Quote(
-                    category="transport",
-                    item_id=item_id or "fuel",
+                    category="food",
+                    item_id=item_id,
                     value=value,
                     observed_at=observed,
-                    source="statcan_gas_csv",
+                    source="statcan_food_prices",
                 )
             )
 
         health.append(
             SourceHealth(
-                source="statcan_gas_csv",
-                category="transport",
+                source="statcan_food_prices",
+                category="food",
                 tier=1,
                 status="stale" if quotes else "missing",
                 last_success_timestamp=utc_now_iso() if quotes else None,
-                detail=f"Collected {len(quotes)} fuel price observations from StatCan.",
+                detail=f"Collected {len(quotes)} retail food price observations from StatCan.",
             )
         )
     except Exception as err:
         health.append(
             SourceHealth(
-                source="statcan_gas_csv",
-                category="transport",
+                source="statcan_food_prices",
+                category="food",
                 tier=1,
                 status="missing",
                 last_success_timestamp=None,

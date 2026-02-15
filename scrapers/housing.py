@@ -1,18 +1,25 @@
+"""Housing category scraper — StatCan CPI table 18-10-0004 CSV download.
+
+Downloads the full CPI table as a ZIP/CSV from Statistics Canada and
+extracts the latest Shelter and Rent index values for Canada.
+Falls back gracefully if the download fails.
+"""
 from __future__ import annotations
 
 import csv
 import io
+import urllib.request
 import zipfile
 from datetime import datetime, timezone
 
-from .common import fetch_url, utc_now_iso
+from .common import utc_now_iso, USER_AGENT
 from .types import Quote, SourceHealth
 
-# Statistics Canada table 18-10-0004-01 (Consumer Price Index, monthly)
-STATCAN_CPI_ZIP = "https://www150.statcan.gc.ca/n1/en/tbl/csv/18100004-eng.zip"
+# StatCan WDS returns a download URL for this table
+STATCAN_CSV_URL = "https://www150.statcan.gc.ca/n1/tbl/csv/18100004-eng.zip"
 
-
-TARGET_VECTOR_HOUSING = {"Rent", "Shelter"}
+# Products we care about for the housing category
+TARGET_PRODUCTS = {"Shelter", "Rented accommodation", "Owned accommodation"}
 
 
 def scrape_housing() -> tuple[list[Quote], list[SourceHealth]]:
@@ -20,30 +27,31 @@ def scrape_housing() -> tuple[list[Quote], list[SourceHealth]]:
     health: list[SourceHealth] = []
 
     try:
-        raw = fetch_url(STATCAN_CPI_ZIP)
-        data = raw.encode("utf-8", errors="ignore")
-
-        # Some endpoints return binary bytes that may be mangled by decode/encode;
-        # recover by fetching bytes directly if needed.
-        if not zipfile.is_zipfile(io.BytesIO(data)):
-            import urllib.request
-
-            req = urllib.request.Request(STATCAN_CPI_ZIP, headers={"User-Agent": "TrueNorthIndexBot/1.0"})
-            with urllib.request.urlopen(req, timeout=30) as response:
-                data = response.read()
+        # Fetch the ZIP file directly as bytes
+        req = urllib.request.Request(
+            STATCAN_CSV_URL,
+            headers={"User-Agent": USER_AGENT},
+        )
+        with urllib.request.urlopen(req, timeout=30) as response:
+            data = response.read()
 
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            csv_name = next(name for name in zf.namelist() if name.endswith(".csv"))
+            csv_name = next(
+                name for name in zf.namelist() if name.endswith(".csv")
+            )
             with zf.open(csv_name) as handle:
-                decoded = io.TextIOWrapper(handle, encoding="utf-8", errors="ignore")
+                decoded = io.TextIOWrapper(
+                    handle, encoding="utf-8-sig", errors="ignore"
+                )
                 rows = list(csv.DictReader(decoded))
 
+        # Find the latest value for each target product in Canada
         latest_by_product: dict[str, tuple[str, float]] = {}
         for row in rows:
             if row.get("GEO") != "Canada":
                 continue
             product = (row.get("Products and product groups") or "").strip()
-            if product not in TARGET_VECTOR_HOUSING:
+            if product not in TARGET_PRODUCTS:
                 continue
             value_raw = row.get("VALUE")
             ref_date = row.get("REF_DATE")
@@ -65,24 +73,24 @@ def scrape_housing() -> tuple[list[Quote], list[SourceHealth]]:
                     item_id=product.lower().replace(" ", "_"),
                     value=value,
                     observed_at=observed,
-                    source="statcan_cpi_table",
+                    source="statcan_cpi_csv",
                 )
             )
 
         health.append(
             SourceHealth(
-                source="statcan_cpi_table",
+                source="statcan_cpi_csv",
                 category="housing",
                 tier=1,
                 status="stale" if quotes else "missing",
                 last_success_timestamp=utc_now_iso() if quotes else None,
-                detail=f"Collected {len(quotes)} monthly CPI housing proxies.",
+                detail=f"Collected {len(quotes)} CPI housing proxies from StatCan CSV.",
             )
         )
-    except Exception as err:  # pragma: no cover - network dependent
+    except Exception as err:
         health.append(
             SourceHealth(
-                source="statcan_cpi_table",
+                source="statcan_cpi_csv",
                 category="housing",
                 tier=1,
                 status="missing",

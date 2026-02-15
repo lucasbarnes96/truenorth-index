@@ -1,33 +1,33 @@
 {
   "as_of_date": "2026-02-15",
-  "timestamp": "2026-02-15T20:20:55+00:00",
+  "timestamp": "2026-02-15T22:20:17+00:00",
   "headline": {
-    "nowcast_mom_pct": null,
+    "nowcast_mom_pct": 0.0,
     "confidence": "low",
-    "coverage_ratio": 0.0,
+    "coverage_ratio": 0.8849,
     "method_label": "Daily nowcast vs prior month basket proxy"
   },
   "categories": {
     "food": {
-      "proxy_level": null,
-      "daily_change_pct": null,
+      "proxy_level": 4.589,
+      "daily_change_pct": 0.0,
       "weight": 0.165,
-      "points": 0,
-      "status": "missing"
+      "points": 10,
+      "status": "fresh"
     },
     "housing": {
-      "proxy_level": null,
-      "daily_change_pct": null,
+      "proxy_level": 184.1667,
+      "daily_change_pct": 0.0,
       "weight": 0.3,
-      "points": 0,
-      "status": "missing"
+      "points": 3,
+      "status": "stale"
     },
     "transport": {
-      "proxy_level": null,
-      "daily_change_pct": null,
+      "proxy_level": 129.6,
+      "daily_change_pct": 0.0,
       "weight": 0.15,
-      "points": 0,
-      "status": "missing"
+      "points": 1,
+      "status": "stale"
     },
     "energy": {
       "proxy_level": null,
@@ -42,50 +42,85 @@
     "mom_pct": null,
     "yoy_pct": null
   },
+  "bank_of_canada": {
+    "total_cpi": 161.2,
+    "total_cpi_date": "2024-12-01",
+    "cpi_trim": 2.7,
+    "cpi_median": 2.5,
+    "cpi_common": 2.8,
+    "mom_pct": -0.062,
+    "yoy_pct": -2.303
+  },
   "source_health": [
     {
       "source": "openfoodfacts_api",
       "category": "food",
       "tier": 1,
-      "status": "missing",
-      "last_success_timestamp": null,
-      "detail": "Fetch failed: Failed to fetch URL: https://prices.openfoodfacts.org/api/v1/prices?size=250&location_country=CA: <urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "status": "fresh",
+      "last_success_timestamp": "2026-02-15T22:19:54+00:00",
+      "detail": "Collected 100 records from OpenFoodFacts API."
     },
     {
-      "source": "caa_scrape",
-      "category": "transport",
-      "tier": 2,
-      "status": "missing",
-      "last_success_timestamp": null,
-      "detail": "Fetch failed: Failed to fetch URL: https://www.caa.ca/gas-prices/: <urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "source": "statcan_food_prices",
+      "category": "food",
+      "tier": 1,
+      "status": "stale",
+      "last_success_timestamp": "2026-02-15T22:19:58+00:00",
+      "detail": "Collected 9 retail food price observations from StatCan."
     },
     {
-      "source": "statcan_cpi_table",
-      "category": "housing",
+      "source": "apify_loblaws",
+      "category": "food",
       "tier": 1,
       "status": "missing",
       "last_success_timestamp": null,
-      "detail": "Fetch failed: Failed to fetch URL: https://www150.statcan.gc.ca/n1/en/tbl/csv/18100004-eng.zip: <urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "detail": "Apify run failed: Input is not valid: Field input.categoryUrl is required"
+    },
+    {
+      "source": "statcan_gas_csv",
+      "category": "transport",
+      "tier": 1,
+      "status": "stale",
+      "last_success_timestamp": "2026-02-15T22:19:59+00:00",
+      "detail": "Collected 1 fuel price observations from StatCan."
+    },
+    {
+      "source": "statcan_cpi_csv",
+      "category": "housing",
+      "tier": 1,
+      "status": "stale",
+      "last_success_timestamp": "2026-02-15T22:20:16+00:00",
+      "detail": "Collected 3 CPI housing proxies from StatCan CSV."
     },
     {
       "source": "oeb_scrape",
       "category": "energy",
       "tier": 2,
+      "status": "fresh",
+      "last_success_timestamp": "2026-02-15T22:20:17+00:00",
+      "detail": "Collected 12 OEB rate observations."
+    },
+    {
+      "source": "ieso_hoep",
+      "category": "energy",
+      "tier": 1,
       "status": "missing",
       "last_success_timestamp": null,
-      "detail": "Fetch failed: Failed to fetch URL: https://www.oeb.ca/consumer-information-and-protection/electricity-rates: <urlopen error [Errno 8] nodename nor servname provided, or not known>"
+      "detail": "IESO fetch failed: HTTP Error 404: Not Found"
     }
   ],
   "notes": [
     "This is an experimental nowcast estimate and not an official CPI release.",
     "Methodology: weighted category proxy changes vs prior period baseline.",
-    "Missing categories today: food, housing, transport, energy. Confidence is downgraded."
+    "Missing categories today: energy. Confidence is downgraded.",
+    "Stale categories used: housing, transport.",
+    "Dropped 12 points via day-over-day anomaly filter."
   ],
   "meta": {
-    "total_raw_points": 0,
-    "total_points_after_dedupe": 0,
-    "total_points_after_quality_filters": 0,
-    "anomaly_points": 0,
+    "total_raw_points": 125,
+    "total_points_after_dedupe": 26,
+    "total_points_after_quality_filters": 14,
+    "anomaly_points": 12,
     "rejected_points": 0
   }
 }

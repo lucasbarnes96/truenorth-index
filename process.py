@@ -10,9 +10,12 @@ from pathlib import Path
 from scrapers import (
     Quote,
     SourceHealth,
+    fetch_boc_cpi,
     fetch_official_cpi_summary,
     scrape_energy,
     scrape_food,
+    scrape_food_statcan,
+    scrape_grocery_apify,
     scrape_housing,
     scrape_transport,
 )
@@ -246,7 +249,7 @@ def collect_all_quotes() -> tuple[list[Quote], list[SourceHealth]]:
     quotes: list[Quote] = []
     health: list[SourceHealth] = []
 
-    for scraper in (scrape_food, scrape_transport, scrape_housing, scrape_energy):
+    for scraper in (scrape_food, scrape_food_statcan, scrape_grocery_apify, scrape_transport, scrape_housing, scrape_energy):
         scraper_quotes, scraper_health = scraper()
         quotes.extend(scraper_quotes)
         health.extend(scraper_health)
@@ -281,6 +284,7 @@ def build_snapshot() -> dict:
         },
         "categories": categories,
         "official_cpi": fetch_official_cpi_summary(),
+        "bank_of_canada": fetch_boc_cpi(),
         "source_health": serialize_source_health(source_health),
         "notes": build_notes(categories, anomalies, rejected_points),
         "meta": {

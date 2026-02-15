@@ -1,25 +1,25 @@
 {
   "2026-02-15": {
     "headline": {
-      "nowcast_mom_pct": null,
+      "nowcast_mom_pct": 0.0,
       "confidence": "low",
-      "coverage_ratio": 0.0
+      "coverage_ratio": 0.8849
     },
     "categories": {
       "food": {
-        "proxy_level": null,
-        "daily_change_pct": null,
-        "status": "missing"
+        "proxy_level": 4.589,
+        "daily_change_pct": 0.0,
+        "status": "fresh"
       },
       "housing": {
-        "proxy_level": null,
-        "daily_change_pct": null,
-        "status": "missing"
+        "proxy_level": 184.1667,
+        "daily_change_pct": 0.0,
+        "status": "stale"
       },
       "transport": {
-        "proxy_level": null,
-        "daily_change_pct": null,
-        "status": "missing"
+        "proxy_level": 129.6,
+        "daily_change_pct": 0.0,
+        "status": "stale"
       },
       "energy": {
         "proxy_level": null,
@@ -30,27 +30,45 @@
     "source_health": [
       {
         "source": "openfoodfacts_api",
+        "status": "fresh",
+        "category": "food",
+        "tier": 1
+      },
+      {
+        "source": "statcan_food_prices",
+        "status": "stale",
+        "category": "food",
+        "tier": 1
+      },
+      {
+        "source": "apify_loblaws",
         "status": "missing",
         "category": "food",
         "tier": 1
       },
       {
-        "source": "caa_scrape",
-        "status": "missing",
+        "source": "statcan_gas_csv",
+        "status": "stale",
         "category": "transport",
-        "tier": 2
+        "tier": 1
       },
       {
-        "source": "statcan_cpi_table",
-        "status": "missing",
+        "source": "statcan_cpi_csv",
+        "status": "stale",
         "category": "housing",
         "tier": 1
       },
       {
         "source": "oeb_scrape",
-        "status": "missing",
+        "status": "fresh",
         "category": "energy",
         "tier": 2
+      },
+      {
+        "source": "ieso_hoep",
+        "status": "missing",
+        "category": "energy",
+        "tier": 1
       }
     ]
   }
