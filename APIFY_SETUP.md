@@ -10,10 +10,11 @@ To get daily grocery prices from Loblaws (Superstore, No Frills) flowing into th
   APIFY_TOKEN=your_token_here
   ```
 
-## 2. Subscribe to the Actor
-- Go to the [Loblaws Grocery Scraper](https://apify.com/sunny_eternity/loblaws-grocery-scraper) page.
-- Click **Try for free** or **Subscribe** (it uses the free monthly usage credits).
-- This ensures the actor is available in your account.
+## 2. Subscribe/Initialize the Actor
+1. Go to the [Loblaws Grocery Scraper](https://apify.com/sunny_eternity/loblaws-grocery-scraper) page.
+2. **IMPORTANT**: Click the green **Start** button once! You can stop it immediately after it starts.
+   - *Why?* This "links" the actor to your account so the API can find it later. Without this step, you might see an "Actor not found" error.
+3. You do **not** need to use the "API" dropdown menu (API clients, endpoints, etc.)—my Python script handles all that for you.
 
 ## 3. Configure the Scraper (Optional)
 The current script (`scrapers/grocery_apify.py`) is configured to scrape the **Dairy & Eggs** category from **Real Canadian Superstore** to track basic staples.

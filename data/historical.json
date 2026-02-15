@@ -2,8 +2,8 @@
   "2026-02-15": {
     "headline": {
       "nowcast_mom_pct": 0.0,
-      "confidence": "low",
-      "coverage_ratio": 0.8849
+      "confidence": "high",
+      "coverage_ratio": 1.0
     },
     "categories": {
       "food": {
@@ -22,9 +22,9 @@
         "status": "stale"
       },
       "energy": {
-        "proxy_level": null,
+        "proxy_level": 4.75,
         "daily_change_pct": null,
-        "status": "missing"
+        "status": "fresh"
       }
     },
     "source_health": [

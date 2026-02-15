@@ -1,10 +1,10 @@
 {
   "as_of_date": "2026-02-15",
-  "timestamp": "2026-02-15T22:20:17+00:00",
+  "timestamp": "2026-02-15T22:21:49+00:00",
   "headline": {
     "nowcast_mom_pct": 0.0,
-    "confidence": "low",
-    "coverage_ratio": 0.8849,
+    "confidence": "high",
+    "coverage_ratio": 1.0,
     "method_label": "Daily nowcast vs prior month basket proxy"
   },
   "categories": {
@@ -30,11 +30,11 @@
       "status": "stale"
     },
     "energy": {
-      "proxy_level": null,
+      "proxy_level": 4.75,
       "daily_change_pct": null,
       "weight": 0.08,
-      "points": 0,
-      "status": "missing"
+      "points": 12,
+      "status": "fresh"
     }
   },
   "official_cpi": {
@@ -57,7 +57,7 @@
       "category": "food",
       "tier": 1,
       "status": "fresh",
-      "last_success_timestamp": "2026-02-15T22:19:54+00:00",
+      "last_success_timestamp": "2026-02-15T22:21:16+00:00",
       "detail": "Collected 100 records from OpenFoodFacts API."
     },
     {
@@ -65,7 +65,7 @@
       "category": "food",
       "tier": 1,
       "status": "stale",
-      "last_success_timestamp": "2026-02-15T22:19:58+00:00",
+      "last_success_timestamp": "2026-02-15T22:21:19+00:00",
       "detail": "Collected 9 retail food price observations from StatCan."
     },
     {
@@ -74,14 +74,14 @@
       "tier": 1,
       "status": "missing",
       "last_success_timestamp": null,
-      "detail": "Apify run failed: Input is not valid: Field input.categoryUrl is required"
+      "detail": "Collected 0 prices from Apify Loblaws scraper."
     },
     {
       "source": "statcan_gas_csv",
       "category": "transport",
       "tier": 1,
       "status": "stale",
-      "last_success_timestamp": "2026-02-15T22:19:59+00:00",
+      "last_success_timestamp": "2026-02-15T22:21:29+00:00",
       "detail": "Collected 1 fuel price observations from StatCan."
     },
     {
@@ -89,7 +89,7 @@
       "category": "housing",
       "tier": 1,
       "status": "stale",
-      "last_success_timestamp": "2026-02-15T22:20:16+00:00",
+      "last_success_timestamp": "2026-02-15T22:21:49+00:00",
       "detail": "Collected 3 CPI housing proxies from StatCan CSV."
     },
     {
@@ -97,7 +97,7 @@
       "category": "energy",
       "tier": 2,
       "status": "fresh",
-      "last_success_timestamp": "2026-02-15T22:20:17+00:00",
+      "last_success_timestamp": "2026-02-15T22:21:49+00:00",
       "detail": "Collected 12 OEB rate observations."
     },
     {
@@ -112,15 +112,13 @@
   "notes": [
     "This is an experimental nowcast estimate and not an official CPI release.",
     "Methodology: weighted category proxy changes vs prior period baseline.",
-    "Missing categories today: energy. Confidence is downgraded.",
-    "Stale categories used: housing, transport.",
-    "Dropped 12 points via day-over-day anomaly filter."
+    "Stale categories used: housing, transport."
   ],
   "meta": {
     "total_raw_points": 125,
     "total_points_after_dedupe": 26,
-    "total_points_after_quality_filters": 14,
-    "anomaly_points": 12,
+    "total_points_after_quality_filters": 26,
+    "anomaly_points": 0,
     "rejected_points": 0
   }
 }
