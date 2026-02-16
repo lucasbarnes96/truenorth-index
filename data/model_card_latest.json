@@ -9,7 +9,7 @@
     "mae_mom_pct": 0.242,
     "directional_accuracy_pct": 0.0,
     "lead_time_score_pct": 0.0,
-    "generated_at": "2026-02-16T20:53:42+00:00"
+    "generated_at": "2026-02-16T21:00:20+00:00"
   },
   "notes": [
     "Experimental nowcast model card.",
