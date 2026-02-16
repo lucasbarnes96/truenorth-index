@@ -40,6 +40,16 @@ APIFY_TOKEN=your_token
 python3 process.py
 ```
 
+Bootstrap history first (recommended for first-time setup):
+
+```bash
+python3.11 scripts/seed_history.py
+python3.11 process.py
+```
+
+`scripts/seed_history.py` backfills the last 365 days with tagged official monthly CPI baselines (`meta.seeded=true`) so trend charts are immediately usable without pretending daily precision.
+The Drivers chart may still show an "insufficient day-over-day history" placeholder until real day-over-day category variation accumulates.
+
 Output artifacts:
 - `data/latest.json` (latest run, includes failed gates)
 - `data/published_latest.json` (last gate-passing run)

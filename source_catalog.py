@@ -138,11 +138,11 @@ SOURCE_CATALOG = [
         "cadence": "annual",
         "categories": ["health_personal"],
         "free_public": True,
-        "proof_url": "https://www.canada.ca/en/patented-medicine-prices-review/services/reports-studies.html",
+        "proof_url": "https://www.pmprb-cepmb.gc.ca/en/reporting/market-intelligence",
         "proxy_type": "regulator_publication",
         "official_open_priority": 2,
         "fallback_policy": "secondary",
-        "legal_notes": "Low frequency, used as supplementary check.",
+        "legal_notes": "Low frequency, used as supplementary check. Endpoint can rotate; scraper uses fallback URLs.",
     },
     {
         "source": "parkscanada_fees",

@@ -7,7 +7,25 @@ from .common import fetch_url, parse_floats_from_text, utc_now_iso
 from .types import Quote, SourceHealth
 
 HEALTH_DPD_URL = "https://health-products.canada.ca/dpd-bdpp/index-eng.jsp"
-PMPRB_REPORTS_URL = "https://www.canada.ca/en/patented-medicine-prices-review/services/reports-studies.html"
+PMPRB_REPORTS_URLS = (
+    "https://www.pmprb-cepmb.gc.ca/en/reporting/market-intelligence",
+    "https://www.pmprb-cepmb.gc.ca/en",
+    "https://www.canada.ca/en/patented-medicine-prices-review/services/reports-studies.html",
+)
+
+
+def _fetch_health_source(url: str) -> tuple[str, str]:
+    return url, fetch_url(url, timeout=20, retries=1)
+
+
+def _fetch_pmprb_with_fallback() -> tuple[str, str]:
+    last_error: Exception | None = None
+    for url in PMPRB_REPORTS_URLS:
+        try:
+            return url, fetch_url(url, timeout=20, retries=1)
+        except Exception as err:
+            last_error = err
+    raise RuntimeError(f"All PMPRB URLs failed: {last_error}")
 
 
 def scrape_health_public() -> tuple[list[Quote], list[SourceHealth]]:
@@ -15,12 +33,11 @@ def scrape_health_public() -> tuple[list[Quote], list[SourceHealth]]:
     health: list[SourceHealth] = []
     observed = datetime.now(timezone.utc).date()
 
-    for source, url in (
-        ("healthcanada_dpd", HEALTH_DPD_URL),
-        ("pmprb_reports", PMPRB_REPORTS_URL),
-    ):
+    for source in ("healthcanada_dpd", "pmprb_reports"):
         try:
-            html = fetch_url(url, timeout=20, retries=1)
+            fetched_url, html = (
+                _fetch_pmprb_with_fallback() if source == "pmprb_reports" else _fetch_health_source(HEALTH_DPD_URL)
+            )
             values = [v for v in parse_floats_from_text(html) if 1 <= v <= 500][:8]
             for idx, value in enumerate(values):
                 quotes.append(
@@ -39,7 +56,7 @@ def scrape_health_public() -> tuple[list[Quote], list[SourceHealth]]:
                     tier=2,
                     status="stale" if values else "missing",
                     last_success_timestamp=utc_now_iso() if values else None,
-                    detail=f"Collected {len(values)} supplemental health/personal points.",
+                    detail=f"Collected {len(values)} supplemental health/personal points from {fetched_url}.",
                     last_observation_period=None,
                 )
             )
@@ -57,4 +74,3 @@ def scrape_health_public() -> tuple[list[Quote], list[SourceHealth]]:
             )
 
     return quotes, health
-

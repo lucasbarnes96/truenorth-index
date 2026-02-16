@@ -83,6 +83,7 @@ class ApiContractTests(unittest.TestCase):
                         "headline": {"nowcast_mom_pct": 0.1, "lead_signal": "up"},
                         "official_cpi": {"mom_pct": 0.2, "yoy_pct": 2.5, "latest_release_month": "2025-12"},
                         "category_contributions": {"food": 0.02},
+                        "meta": {"seeded": True, "seed_type": "official_monthly_baseline", "seed_source": "statcan_cpi_csv"},
                     }
                 }
             )
@@ -186,6 +187,13 @@ class ApiContractTests(unittest.TestCase):
         self.assertEqual(200, resp.status_code)
         body = resp.json()
         self.assertEqual(2.6, body["headline_yoy"])
+
+    def test_history_preserves_seeded_meta(self) -> None:
+        resp = self.client.get("/v1/nowcast/history")
+        self.assertEqual(200, resp.status_code)
+        items = resp.json()["items"]
+        self.assertEqual(1, len(items))
+        self.assertTrue(items[0]["meta"]["seeded"])
 
 
 if __name__ == "__main__":

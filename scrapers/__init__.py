@@ -9,7 +9,7 @@ from .grocery_apify import scrape_grocery_apify
 from .health_personal import scrape_health_personal
 from .health_public import scrape_health_public
 from .housing import scrape_housing
-from .official_cpi import fetch_official_cpi_summary
+from .official_cpi import fetch_official_cpi_series, fetch_official_cpi_summary
 from .recreation_education_public import scrape_recreation_education_public
 from .release_calendar_statcan import fetch_release_events
 from .recreation_education import scrape_recreation_education
@@ -32,6 +32,7 @@ __all__ = [
     "scrape_health_public",
     "scrape_recreation_education",
     "scrape_recreation_education_public",
+    "fetch_official_cpi_series",
     "fetch_official_cpi_summary",
     "fetch_release_events",
     "fetch_consensus_estimate",
