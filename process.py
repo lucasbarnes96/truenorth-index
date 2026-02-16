@@ -130,6 +130,9 @@ APIFY_MAX_AGE_DAYS = 14
 METHOD_LABEL = "YoY nowcast from public category proxies with month-to-date prorating"
 METHOD_VERSION = "v1.2.0"
 CORE_GATE_CATEGORIES = ("food", "housing", "transport")
+MIN_PLAUSIBLE_CONSENSUS_YOY = 1.0
+MAX_PLAUSIBLE_CONSENSUS_YOY = 5.0
+MAX_CONSENSUS_SPREAD_PCT = 1.0
 
 
 def utc_now() -> datetime:
@@ -507,6 +510,57 @@ def compute_nowcast_yoy_prorated(
     return round_or_none(yoy, 3), diagnostics
 
 
+def apply_consensus_guardrails(consensus_payload: dict | None) -> tuple[float | None, dict]:
+    diagnostics = {
+        "accepted": False,
+        "reason": None,
+        "candidate_count": 0,
+        "usable_count": 0,
+        "spread": None,
+    }
+    if not isinstance(consensus_payload, dict):
+        diagnostics["reason"] = "missing_payload"
+        return None, diagnostics
+
+    sources = consensus_payload.get("sources")
+    if not isinstance(sources, list):
+        diagnostics["reason"] = "missing_sources"
+        return None, diagnostics
+
+    candidates: list[float] = []
+    for row in sources:
+        if not isinstance(row, dict):
+            continue
+        candidate = row.get("headline_yoy_candidate")
+        field_confidence = row.get("field_confidence")
+        if field_confidence not in {"medium", "high"}:
+            continue
+        if not isinstance(candidate, (int, float)):
+            continue
+        value = float(candidate)
+        if MIN_PLAUSIBLE_CONSENSUS_YOY <= value <= MAX_PLAUSIBLE_CONSENSUS_YOY:
+            candidates.append(value)
+
+    diagnostics["usable_count"] = len(candidates)
+    diagnostics["candidate_count"] = sum(
+        1
+        for row in sources
+        if isinstance(row, dict) and isinstance(row.get("headline_yoy_candidate"), (int, float))
+    )
+    if len(candidates) < 2:
+        diagnostics["reason"] = "insufficient_high_conf_sources"
+        return None, diagnostics
+
+    spread = max(candidates) - min(candidates)
+    diagnostics["spread"] = round_or_none(spread, 3)
+    if spread > MAX_CONSENSUS_SPREAD_PCT:
+        diagnostics["reason"] = "candidate_spread_too_wide"
+        return None, diagnostics
+
+    diagnostics["accepted"] = True
+    return round(sum(candidates) / len(candidates), 3), diagnostics
+
+
 def derive_lead_signal(nowcast_mom: float | None) -> str:
     if nowcast_mom is None:
         return "insufficient_data"
@@ -770,6 +824,7 @@ def update_historical(snapshot: dict, historical: dict) -> dict:
             "latest_release_month": official.get("latest_release_month"),
             "mom_pct": official_mom,
             "yoy_pct": official.get("yoy_pct"),
+            "yoy_display_pct": official.get("yoy_display_pct"),
         },
         "categories": {
             k: {
@@ -827,13 +882,14 @@ def build_snapshot() -> dict:
     official_series = fetch_official_cpi_series()
     official_yoy = official_cpi.get("yoy_pct")
     official_mom = official_cpi.get("mom_pct")
+    official_yoy_display = round_or_none(float(official_yoy), 1) if official_yoy is not None else None
     fallback_used = False
     if nowcast_mom is None and official_mom is not None:
         # Bootstrap fallback: keep headline populated when category baseline is not yet established.
         nowcast_mom = round_or_none(float(official_mom), 3)
         fallback_used = True
     lead_signal = derive_lead_signal(nowcast_mom)
-    consensus_yoy = consensus_latest.get("headline_yoy") if isinstance(consensus_latest, dict) else None
+    consensus_yoy, consensus_guardrails = apply_consensus_guardrails(consensus_latest if isinstance(consensus_latest, dict) else None)
     nowcast_yoy, yoy_projection = compute_nowcast_yoy_prorated(now.date(), nowcast_mom, official_series)
     deviation_yoy = None
     if nowcast_yoy is not None and consensus_yoy is not None:
@@ -891,6 +947,7 @@ def build_snapshot() -> dict:
                 else [],
                 "sources": consensus_latest.get("sources", []) if isinstance(consensus_latest, dict) else [],
                 "errors": consensus_latest.get("errors", []) if isinstance(consensus_latest, dict) else [],
+                "guardrails": consensus_guardrails,
             },
         },
         "performance_ref": {
@@ -949,6 +1006,14 @@ def build_snapshot() -> dict:
     if nowcast_yoy is None:
         reason = yoy_projection.get("reason") if isinstance(yoy_projection, dict) else "unknown"
         snapshot["notes"].append(f"Nowcast YoY unavailable: {reason}.")
+    if official_yoy_display is not None:
+        snapshot["official_cpi"]["yoy_display_pct"] = official_yoy_display
+        snapshot["notes"].append(
+            f"Official CPI YoY display uses one-decimal release-style rounding ({official_yoy_display}%)."
+        )
+    if consensus_yoy is None:
+        reason = consensus_guardrails.get("reason") if isinstance(consensus_guardrails, dict) else "unknown"
+        snapshot["notes"].append(f"Consensus YoY withheld due to quality guardrails: {reason}.")
     return snapshot
 
 

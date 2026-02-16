@@ -505,11 +505,23 @@
       return Object.keys(historical || {}).sort().map(day => ({ date: day, ...(historical[day] || {}) }));
     }
 
+    function countLiveNowcastDays(items) {
+      return items.filter((d) => {
+        const seeded = Boolean(d.meta && d.meta.seeded);
+        const yoy = d.headline?.nowcast_yoy_pct;
+        return !seeded && yoy !== null && yoy !== undefined;
+      }).length;
+    }
+
     function renderDivergence(items) {
       const days = items.map(d => d.date);
       const nowcast = items.map(d => d.headline?.nowcast_yoy_pct ?? null);
       const official = items.map(d => d.official_cpi?.yoy_pct ?? null);
-      const firstLiveIndex = nowcast.findIndex(v => v !== null && v !== undefined);
+      const firstLiveIndex = items.findIndex((d) => {
+        const seeded = Boolean(d.meta && d.meta.seeded);
+        const yoy = d.headline?.nowcast_yoy_pct;
+        return !seeded && yoy !== null && yoy !== undefined;
+      });
       const decorPlugin = {
         id: "liveNowcastDecor",
         beforeDatasetsDraw(chart) {
@@ -704,12 +716,14 @@
       return `${d}d ${h}h ${m}m`;
     }
 
-    function renderReleaseIntel(latest, upcomingRelease, consensus) {
+    function renderReleaseIntel(latest, upcomingRelease, consensus, liveDays) {
       const grid = document.getElementById("release-grid");
       const official = latest.official_cpi || {};
+      const officialYoy = official.yoy_display_pct ?? official.yoy_pct;
       const consensusYoy = consensus?.headline_yoy ?? latest.headline?.consensus_yoy;
       const consensusMom = consensus?.headline_mom ?? null;
       const deviation = latest.headline?.deviation_yoy_pct ?? latest.headline?.consensus_spread_yoy;
+      const deviationEnabled = liveDays >= 30 && consensusYoy !== null && consensusYoy !== undefined;
       const nextRelease = upcomingRelease?.next_release || latest.meta?.release_intelligence || {};
       const cards = [
         {
@@ -736,17 +750,19 @@
         },
         {
           title: "Last Actual CPI",
-          value: `${pct(official.yoy_pct)} YoY / ${pct(official.mom_pct)} MoM`,
+          value: `${pct(officialYoy, 1)} YoY / ${pct(official.mom_pct)} MoM`,
           note: `Release month: ${official.latest_release_month || "--"}`,
         },
         {
           title: "Deviation from Expectations",
-          value: consensusYoy === null || consensusYoy === undefined || deviation === null || deviation === undefined
+          value: !deviationEnabled || deviation === null || deviation === undefined
             ? "Unavailable"
             : `${Number(deviation).toFixed(2)} pp`,
           note: consensusYoy === null || consensusYoy === undefined
             ? "Consensus forecast not yet available from aggregated sources."
-            : "Nowcast YoY - consensus YoY",
+            : liveDays < 30
+              ? "Deviation is hidden until at least 30 live nowcast days are available."
+              : "Nowcast YoY - consensus YoY",
         },
       ];
       grid.innerHTML = "";
@@ -761,6 +777,7 @@
 
     function renderHero(latest) {
       const yoy = latest.official_cpi?.yoy_pct;
+      const yoyDisplay = latest.official_cpi?.yoy_display_pct;
       const nowcast = latest.headline?.nowcast_yoy_pct;
       const consensus = latest.headline?.consensus_yoy;
       const deviation = (nowcast !== null && nowcast !== undefined && consensus !== null && consensus !== undefined)
@@ -768,7 +785,7 @@
         : null;
 
       const hero = document.getElementById("hero-yoy");
-      hero.textContent = pct(yoy);
+      hero.textContent = pct(yoyDisplay !== null && yoyDisplay !== undefined ? yoyDisplay : yoy, 1);
       hero.className = `hero-value ${toneClass(yoy)}`;
 
       let summary = "Official CPI is unavailable right now.";
@@ -842,12 +859,13 @@
       banner.textContent = `Release status: published. Calculation ID: ${release.run_id || "--"}.`;
     }
 
-    function renderPerformance(performance) {
+    function renderPerformance(performance, liveDays) {
       const ul = document.getElementById("performance-list");
       ul.innerHTML = "";
       const rows = [
         `Evaluation window: last ${performance?.window_days ?? "--"} days`,
         `Evaluated points: ${performance?.evaluated_points ?? "--"}`,
+        `Live nowcast days accumulated: ${liveDays}`,
         `MAE (MoM): ${performance?.mae_mom_pct ?? "--"} percentage points`,
         `Directional accuracy: ${performance?.directional_accuracy_pct ?? "--"}%`,
         `Lead-time score: ${performance?.lead_time_score_pct ?? "--"}%`,
@@ -890,17 +908,17 @@
         fetchJsonWithFallback("/v1/consensus/latest", "data/consensus_latest.json"),
       ]).then(([latest, historical, methodology, performance, upcomingRelease, consensus]) => {
         document.getElementById("asof").textContent = `as of ${latest.as_of_date || "--"}`;
+        const items = safeHistoryItems(historical).slice(-365);
+        const liveDays = countLiveNowcastDays(items);
         applyReleaseBanner(latest);
         renderHero(latest);
-        renderReleaseIntel(latest, upcomingRelease, consensus);
+        renderReleaseIntel(latest, upcomingRelease, consensus, liveDays);
         renderPurchasingPowerCard(latest);
         renderNotes(latest);
         renderSourceTable(latest.source_health || []);
         renderMethodology(methodology, latest);
-        renderPerformance(performance);
-
-        const items = safeHistoryItems(historical).slice(-90);
-        renderDivergence(items);
+        renderPerformance(performance, liveDays);
+        renderDivergence(items.slice(-90));
         renderCategoryChart(latest);
       }).catch(err => {
         document.body.innerHTML = `<main class='wrap'><section class='card'><h2>Data load error</h2><p>${String(err)}</p></section></main>`;

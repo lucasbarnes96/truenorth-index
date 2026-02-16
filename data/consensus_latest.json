@@ -1,9 +1,9 @@
 {
-  "headline_yoy": 0.515,
+  "headline_yoy": null,
   "headline_mom": null,
   "source_count": 2,
   "confidence": "medium",
-  "as_of": "2026-02-16T22:42:52+00:00",
+  "as_of": "2026-02-16T23:12:09+00:00",
   "source_urls": [
     "https://tradingeconomics.com/canada/inflation-cpi",
     "https://www.fxstreet.com/economic-calendar"
@@ -12,17 +12,24 @@
     {
       "source": "tradingeconomics",
       "url": "https://tradingeconomics.com/canada/inflation-cpi",
-      "retrieved_at": "2026-02-16T22:42:52+00:00",
+      "retrieved_at": "2026-02-16T23:12:09+00:00",
       "headline_yoy_candidate": 0.0,
       "field_confidence": "low"
     },
     {
       "source": "fxstreet",
       "url": "https://www.fxstreet.com/economic-calendar",
-      "retrieved_at": "2026-02-16T22:42:52+00:00",
+      "retrieved_at": "2026-02-16T23:12:09+00:00",
       "headline_yoy_candidate": 1.03,
       "field_confidence": "low"
     }
   ],
-  "errors": []
+  "errors": [],
+  "guardrails": {
+    "accepted": false,
+    "reason": "insufficient_high_conf_sources",
+    "candidate_count": 2,
+    "usable_count": 0,
+    "spread": null
+  }
 }
