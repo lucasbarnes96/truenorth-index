@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 import sys
@@ -42,6 +43,29 @@ def _load_env_value(key: str) -> str | None:
 
 def _load_token() -> str | None:
     return _load_env_value("APIFY_TOKEN")
+
+
+def _env_flag(name: str, default: bool = True) -> bool:
+    value = (_load_env_value(name) or "").strip().lower()
+    if not value:
+        return default
+    return value in {"1", "true", "yes", "on"}
+
+
+def _load_previous_apify_timestamp() -> str | None:
+    for path in ("data/published_latest.json", "data/latest.json"):
+        if not os.path.exists(path):
+            continue
+        try:
+            payload = json.loads(open(path, "r", encoding="utf-8").read())
+        except Exception:
+            continue
+        for row in payload.get("source_health", []):
+            if row.get("source") == "apify_loblaws":
+                ts = row.get("last_success_timestamp")
+                if ts:
+                    return ts
+    return None
 
 
 def _actor_ids() -> list[str]:
@@ -170,6 +194,24 @@ def normalize_apify_item(item: dict[str, Any], observed: date, source_run_id: st
 
 def scrape_grocery_apify() -> tuple[list[Quote], list[SourceHealth]]:
     """Run Apify actor(s) with deterministic fallback."""
+    if not _env_flag("APIFY_ENABLED", default=True):
+        previous_ts = _load_previous_apify_timestamp()
+        status = "stale" if previous_ts else "missing"
+        detail = "APIFY run skipped by schedule (APIFY_ENABLED=false)."
+        if previous_ts:
+            detail += " Reusing last successful APIFY timestamp for freshness gating."
+        return [], [
+            SourceHealth(
+                source="apify_loblaws",
+                category="food",
+                tier=1,
+                status=status,
+                last_success_timestamp=previous_ts,
+                detail=detail,
+                source_run_id=None,
+            )
+        ]
+
     token = _load_token()
 
     if not token:
