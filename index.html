@@ -431,6 +431,22 @@
         );
     }
 
+    function fetchLatestSnapshot() {
+      return fetch("/v1/nowcast/latest")
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .catch(() =>
+          fetch("data/published_latest.json")
+            .then((r) => {
+              if (!r.ok) throw new Error(`HTTP ${r.status}`);
+              return r.json();
+            })
+            .catch(() => fetchJsonWithFallback("data/latest.json", "data/published_latest.json"))
+        );
+    }
+
     function safeHistoryItems(historical) {
       if (Array.isArray(historical.items)) return historical.items;
       return Object.keys(historical || {}).sort().map(day => ({ date: day, ...(historical[day] || {}) }));
@@ -754,7 +770,7 @@
     } else {
       renderExplainers();
       Promise.all([
-        fetchJsonWithFallback("/v1/nowcast/latest", "data/latest.json"),
+        fetchLatestSnapshot(),
         fetchJsonWithFallback("/v1/nowcast/history", "data/historical.json"),
         fetchJsonWithFallback("/v1/methodology", "data/latest.json"),
         fetchJsonWithFallback("/v1/performance/summary", "data/performance_summary.json"),

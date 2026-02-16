@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-02-16T20:29:37+00:00",
+  "as_of": "2026-02-16T20:44:39+00:00",
   "source_url": "https://www150.statcan.gc.ca/n1/dai-quo/cal2-eng.htm",
   "events": [
     {
@@ -11,9 +11,7 @@
       "status": "scheduled_fallback"
     }
   ],
-  "errors": [
-    "Failed to fetch URL: https://www150.statcan.gc.ca/n1/dai-quo/cal2-eng.htm: <urlopen error [Errno 8] nodename nor servname provided, or not known>"
-  ],
+  "errors": [],
   "next_release": {
     "event_date": "2026-02-17",
     "release_at_et": "2026-02-17 08:30 ET",
@@ -21,7 +19,7 @@
     "series": "Canada CPI",
     "source_url": "https://www150.statcan.gc.ca/n1/dai-quo/cal2-eng.htm",
     "status": "upcoming",
-    "countdown_seconds": 61223
+    "countdown_seconds": 60321
   },
   "method_version": "v1.6.0"
 }

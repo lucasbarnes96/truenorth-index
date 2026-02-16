@@ -241,14 +241,19 @@ def scrape_grocery_apify() -> tuple[list[Quote], list[SourceHealth]]:
         ]
 
     if sys.version_info >= (3, 13):
+        previous_ts = _load_previous_apify_timestamp()
+        status = "stale" if previous_ts else "missing"
+        detail = "Python 3.13 is not supported for apify-client in this project. Use Python 3.11."
+        if previous_ts:
+            detail += " Reusing last successful APIFY timestamp for freshness gating."
         return [], [
             SourceHealth(
                 source="apify_loblaws",
                 category="food",
                 tier=1,
-                status="missing",
-                last_success_timestamp=None,
-                detail="Python 3.13 is not supported for apify-client in this project. Use Python 3.11.",
+                status=status,
+                last_success_timestamp=previous_ts,
+                detail=detail,
                 source_run_id=None,
             )
         ]
