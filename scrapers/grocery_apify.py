@@ -21,31 +21,53 @@ DEFAULT_ACTOR_IDS = [
     "ko_red/loblaws-grocery-scraper",
 ]
 DEFAULT_CATEGORY_URL = "https://www.realcanadiansuperstore.ca/food/dairy-eggs/c/28003"
+DEFAULT_BANNER = "superstore"
 
 
-def _load_token() -> str | None:
-    token = os.getenv("APIFY_TOKEN")
-    if token:
-        return token
-
+def _load_env_value(key: str) -> str | None:
+    value = os.getenv(key)
+    if value:
+        return value
     if os.path.exists(".env"):
         try:
             with open(".env", "r", encoding="utf-8") as handle:
                 for line in handle:
                     line = line.strip()
-                    if line.startswith("APIFY_TOKEN="):
+                    if line.startswith(f"{key}="):
                         return line.split("=", 1)[1].strip().strip('"').strip("'")
         except Exception:
             return None
     return None
 
 
+def _load_token() -> str | None:
+    return _load_env_value("APIFY_TOKEN")
+
+
 def _actor_ids() -> list[str]:
-    raw = os.getenv("APIFY_ACTOR_IDS", "").strip()
+    raw = (_load_env_value("APIFY_ACTOR_IDS") or "").strip()
     if not raw:
         return DEFAULT_ACTOR_IDS
     values = [x.strip() for x in raw.split(",")]
     return [x for x in values if x]
+
+
+def _category_url_candidates(category_url: str) -> list[str]:
+    values: list[str] = []
+    normalized = category_url.strip()
+    if normalized:
+        values.append(normalized)
+
+    if "://www.realcanadiansuperstore.ca/food/" in normalized:
+        values.append(normalized.replace("://www.realcanadiansuperstore.ca/food/", "://www.realcanadiansuperstore.ca/en/food/"))
+    if "://www.realcanadiansuperstore.ca/en/en/" in normalized:
+        values.append(normalized.replace("/en/en/", "/en/"))
+
+    deduped: list[str] = []
+    for value in values:
+        if value and value not in deduped:
+            deduped.append(value)
+    return deduped
 
 
 def _parse_price(item: dict[str, Any]) -> float | None:
@@ -59,6 +81,13 @@ def _parse_price(item: dict[str, Any]) -> float | None:
                 return float(value)
             except (TypeError, ValueError):
                 continue
+    elif isinstance(price, str):
+        match = re.search(r"(\d+(?:\.\d+)?)", price)
+        if match:
+            try:
+                return float(match.group(1))
+            except (TypeError, ValueError):
+                pass
     elif price is not None:
         try:
             return float(price)
@@ -73,6 +102,24 @@ def _parse_price(item: dict[str, Any]) -> float | None:
             return float(value)
         except (TypeError, ValueError):
             continue
+
+    for key in ("comparable_unit_price",):
+        value = item.get(key)
+        if value is None:
+            continue
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            continue
+
+    parsed_unit_price = item.get("parsed_unit_price")
+    if isinstance(parsed_unit_price, dict):
+        value = parsed_unit_price.get("value")
+        if value is not None:
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                pass
     return None
 
 
@@ -85,11 +132,17 @@ def _parse_name(item: dict[str, Any]) -> str | None:
 
 
 def _parse_unit(item: dict[str, Any]) -> str:
-    for key in ("packageSize", "size", "unitText", "unit"):
+    for key in ("package_size", "packageSize", "size", "unitText", "unit"):
         value = item.get(key)
         if isinstance(value, str) and value.strip():
             cleaned = re.sub(r"\s+", " ", value.strip())
             return cleaned.lower()
+    normalized = item.get("normalized_package_size")
+    if isinstance(normalized, dict):
+        size = normalized.get("size")
+        unit = normalized.get("unit")
+        if size is not None and unit:
+            return f"{size}{unit}".lower()
     return "unknown_unit"
 
 
@@ -161,8 +214,15 @@ def scrape_grocery_apify() -> tuple[list[Quote], list[SourceHealth]]:
     quotes: list[Quote] = []
     errors: list[str] = []
     observed = datetime.now(timezone.utc).date()
-    category_url = os.getenv("APIFY_CATEGORY_URL", DEFAULT_CATEGORY_URL)
-    max_items = int(os.getenv("APIFY_MAX_ITEMS", "50"))
+    category_url = _load_env_value("APIFY_CATEGORY_URL") or DEFAULT_CATEGORY_URL
+    category_url_candidates = _category_url_candidates(category_url)
+    banner = (_load_env_value("APIFY_BANNER") or DEFAULT_BANNER).strip().lower()
+    location_id = (_load_env_value("APIFY_LOCATION_ID") or "").strip()
+    max_items_raw = _load_env_value("APIFY_MAX_ITEMS") or "50"
+    try:
+        max_items = int(max_items_raw)
+    except ValueError:
+        max_items = 50
     actor_ids = _actor_ids()
     source_run_id: str | None = None
 
@@ -184,43 +244,47 @@ def scrape_grocery_apify() -> tuple[list[Quote], list[SourceHealth]]:
         ]
 
     for actor_id in actor_ids:
-        run_input = {
-            "categoryUrl": category_url,
-            "maxItems": max_items,
-            "proxyConfig": {"useApifyProxy": True},
-        }
+        for category_url_try in category_url_candidates:
+            run_input = {
+                "banner": banner,
+                "categoryUrl": category_url_try,
+                "maxItems": max_items,
+                "proxyConfig": {"useApifyProxy": True},
+            }
+            if location_id:
+                run_input["locationId"] = location_id
 
-        try:
-            run = client.actor(actor_id).call(run_input=run_input)
-            source_run_id = str(run.get("id") or run.get("defaultDatasetId") or "")
-            dataset_id = run.get("defaultDatasetId")
-            if not dataset_id:
-                errors.append(f"{actor_id}: missing defaultDatasetId")
-                continue
-            dataset_items = client.dataset(dataset_id).list_items(limit=max_items).items
-
-            for item in dataset_items:
-                if not isinstance(item, dict):
+            try:
+                run = client.actor(actor_id).call(run_input=run_input)
+                source_run_id = str(run.get("id") or run.get("defaultDatasetId") or "")
+                dataset_id = run.get("defaultDatasetId")
+                if not dataset_id:
+                    errors.append(f"{actor_id}: missing defaultDatasetId")
                     continue
-                quote = normalize_apify_item(item, observed=observed, source_run_id=source_run_id or "")
-                if quote is not None:
-                    quotes.append(quote)
+                dataset_items = client.dataset(dataset_id).list_items(limit=max_items).items
 
-            if quotes:
-                return quotes, [
-                    SourceHealth(
-                        source="apify_loblaws",
-                        category="food",
-                        tier=1,
-                        status="fresh",
-                        last_success_timestamp=utc_now_iso(),
-                        detail=f"Collected {len(quotes)} prices from actor {actor_id}.",
-                        source_run_id=source_run_id,
-                    )
-                ]
-            errors.append(f"{actor_id}: no valid records returned")
-        except BaseException as err:  # pragma: no cover - network/runtime dependent
-            errors.append(f"{actor_id}: {err}")
+                for item in dataset_items:
+                    if not isinstance(item, dict):
+                        continue
+                    quote = normalize_apify_item(item, observed=observed, source_run_id=source_run_id or "")
+                    if quote is not None:
+                        quotes.append(quote)
+
+                if quotes:
+                    return quotes, [
+                        SourceHealth(
+                            source="apify_loblaws",
+                            category="food",
+                            tier=1,
+                            status="fresh",
+                            last_success_timestamp=utc_now_iso(),
+                            detail=f"Collected {len(quotes)} prices from actor {actor_id} (banner={banner}, category={category_url_try}, location={location_id or 'default'}).",
+                            source_run_id=source_run_id,
+                        )
+                    ]
+                errors.append(f"{actor_id}: no valid records for category={category_url_try} location={location_id or 'default'}")
+            except BaseException as err:  # pragma: no cover - network/runtime dependent
+                errors.append(f"{actor_id}: {err}")
 
     detail = "Apify run failed for all actors."
     if errors:

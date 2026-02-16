@@ -104,7 +104,7 @@ def methodology() -> dict:
         "gate_policy": {
             "apify_max_age_days": 14,
             "required_sources": ["apify_loblaws", "statcan_cpi_csv", "statcan_gas_csv"],
-            "energy_required_any_of": ["oeb_scrape", "ieso_hoep"],
+            "energy_required_any_of": ["oeb_scrape", "ieso_hoep", "statcan_energy_cpi_csv"],
             "category_min_points": {"food": 5, "housing": 2, "transport": 1, "energy": 1},
             "metadata_required": ["official_cpi.latest_release_month"],
         },

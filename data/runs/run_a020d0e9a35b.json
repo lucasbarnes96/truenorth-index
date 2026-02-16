@@ -1,40 +1,40 @@
 {
-  "as_of_date": "2026-02-16",
-  "timestamp": "2026-02-16T00:17:51+00:00",
+  "as_of_date": "2026-02-15",
+  "timestamp": "2026-02-15T23:36:58+00:00",
   "headline": {
-    "nowcast_mom_pct": null,
-    "confidence": "high",
-    "coverage_ratio": 1.0,
+    "nowcast_mom_pct": 0.0,
+    "confidence": "low",
+    "coverage_ratio": 0.6475,
     "method_label": "Daily nowcast vs prior month basket proxy"
   },
   "categories": {
     "food": {
-      "proxy_level": 4.0445,
-      "daily_change_pct": null,
+      "proxy_level": 4.589,
+      "daily_change_pct": 0.0,
       "weight": 0.165,
-      "points": 60,
-      "status": "fresh"
+      "points": 10,
+      "status": "missing"
     },
     "housing": {
       "proxy_level": 184.1667,
-      "daily_change_pct": null,
+      "daily_change_pct": 0.0,
       "weight": 0.3,
       "points": 3,
       "status": "fresh"
     },
     "transport": {
       "proxy_level": 129.6,
-      "daily_change_pct": null,
+      "daily_change_pct": 0.0,
       "weight": 0.15,
       "points": 1,
       "status": "fresh"
     },
     "energy": {
-      "proxy_level": 4.75,
+      "proxy_level": null,
       "daily_change_pct": null,
       "weight": 0.08,
-      "points": 12,
-      "status": "fresh"
+      "points": 0,
+      "status": "missing"
     }
   },
   "official_cpi": {
@@ -57,7 +57,7 @@
       "category": "food",
       "tier": 1,
       "status": "fresh",
-      "last_success_timestamp": "2026-02-16T00:17:51+00:00",
+      "last_success_timestamp": "2026-02-15T23:36:58+00:00",
       "detail": "Collected 100 records from OpenFoodFacts API.",
       "source_run_id": null,
       "age_days": 0,
@@ -68,7 +68,7 @@
       "category": "food",
       "tier": 1,
       "status": "fresh",
-      "last_success_timestamp": "2026-02-16T00:17:55+00:00",
+      "last_success_timestamp": "2026-02-15T23:37:01+00:00",
       "detail": "Collected 9 retail food price observations from StatCan.",
       "source_run_id": null,
       "age_days": 0,
@@ -78,19 +78,19 @@
       "source": "apify_loblaws",
       "category": "food",
       "tier": 1,
-      "status": "fresh",
-      "last_success_timestamp": "2026-02-16T00:18:19+00:00",
-      "detail": "Collected 50 prices from actor sunny_eternity/loblaws-grocery-scraper (banner=superstore, category=https://www.realcanadiansuperstore.ca/en/food/fruits-vegetables/fresh-vegetables/c/28195, location=default).",
-      "source_run_id": "8DotMmvkilYgcLuKo",
-      "age_days": 0,
-      "updated_days_ago": "updated today"
+      "status": "missing",
+      "last_success_timestamp": null,
+      "detail": "Apify run failed for all actors. sunny_eternity/loblaws-grocery-scraper: no valid records returned",
+      "source_run_id": "OGFC3pKJypIhodigs",
+      "age_days": null,
+      "updated_days_ago": "unknown"
     },
     {
       "source": "statcan_gas_csv",
       "category": "transport",
       "tier": 1,
       "status": "fresh",
-      "last_success_timestamp": "2026-02-16T00:18:19+00:00",
+      "last_success_timestamp": "2026-02-15T23:37:11+00:00",
       "detail": "Collected 1 fuel price observations from StatCan.",
       "source_run_id": null,
       "age_days": 0,
@@ -101,7 +101,7 @@
       "category": "housing",
       "tier": 1,
       "status": "fresh",
-      "last_success_timestamp": "2026-02-16T00:18:29+00:00",
+      "last_success_timestamp": "2026-02-15T23:37:24+00:00",
       "detail": "Collected 3 CPI housing proxies from StatCan CSV.",
       "source_run_id": null,
       "age_days": 0,
@@ -112,7 +112,7 @@
       "category": "energy",
       "tier": 2,
       "status": "fresh",
-      "last_success_timestamp": "2026-02-16T00:18:29+00:00",
+      "last_success_timestamp": "2026-02-15T23:37:25+00:00",
       "detail": "Collected 12 OEB rate observations.",
       "source_run_id": null,
       "age_days": 0,
@@ -128,41 +128,35 @@
       "source_run_id": null,
       "age_days": null,
       "updated_days_ago": "unknown"
-    },
-    {
-      "source": "statcan_energy_cpi_csv",
-      "category": "energy",
-      "tier": 1,
-      "status": "fresh",
-      "last_success_timestamp": "2026-02-16T00:18:39+00:00",
-      "detail": "Collected 1 StatCan energy CPI fallback points.",
-      "source_run_id": null,
-      "age_days": 0,
-      "updated_days_ago": "updated today"
     }
   ],
   "notes": [
     "This is an experimental nowcast estimate and not an official CPI release.",
     "Methodology: weighted category proxy changes vs prior period baseline.",
-    "Dropped 1 points via range checks."
+    "Missing categories today: food, energy. Confidence is downgraded.",
+    "Dropped 12 points via day-over-day anomaly filter.",
+    "Release gate failed: Gate A failed: APIFY missing or older than 14 days.; Gate D failed: category energy has fewer than 1 points."
   ],
   "meta": {
-    "total_raw_points": 176,
-    "total_points_after_dedupe": 77,
-    "total_points_after_quality_filters": 76,
-    "anomaly_points": 0,
-    "rejected_points": 1
+    "total_raw_points": 125,
+    "total_points_after_dedupe": 26,
+    "total_points_after_quality_filters": 14,
+    "anomaly_points": 12,
+    "rejected_points": 0
   },
   "release": {
-    "run_id": "run_a2d10337dc20",
-    "status": "published",
+    "run_id": "run_a020d0e9a35b",
+    "status": "failed_gate",
     "lifecycle_states": [
       "started",
       "completed",
-      "published"
+      "failed_gate"
     ],
-    "blocked_conditions": [],
-    "created_at": "2026-02-16T00:17:51+00:00",
-    "published_at": "2026-02-16T00:17:51+00:00"
+    "blocked_conditions": [
+      "Gate A failed: APIFY missing or older than 14 days.",
+      "Gate D failed: category energy has fewer than 1 points."
+    ],
+    "created_at": "2026-02-15T23:36:58+00:00",
+    "published_at": null
   }
 }

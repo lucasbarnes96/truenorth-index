@@ -63,6 +63,7 @@ SOURCE_SLA_DAYS = {
     "openfoodfacts_api": 2,
     "oeb_scrape": 2,
     "ieso_hoep": 2,
+    "statcan_energy_cpi_csv": 45,
     "statcan_food_prices": 45,
     "statcan_gas_csv": 45,
     "statcan_cpi_csv": 45,
@@ -352,7 +353,7 @@ def evaluate_gate(snapshot: dict) -> list[str]:
             blocked.append(f"Gate B failed: required source {required} is missing.")
 
     energy_ok = False
-    for source in ("oeb_scrape", "ieso_hoep"):
+    for source in ("oeb_scrape", "ieso_hoep", "statcan_energy_cpi_csv"):
         state = source_by_name.get(source, {}).get("status")
         if state in {"fresh", "stale"}:
             energy_ok = True
