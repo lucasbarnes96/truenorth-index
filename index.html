@@ -3,38 +3,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TrueNorth Index - Daily CPI Nowcast (Estimate)</title>
+  <title>TrueNorth Index - Easy & Expert Inflation Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
     :root {
-      --bg-a: #071322;
-      --bg-b: #12304b;
-      --card: rgba(255, 255, 255, 0.07);
-      --border: rgba(255, 255, 255, 0.15);
-      --text: #f0f4f8;
-      --muted: #94a9bc;
-      --accent: #48bfe3;
-      --good: #2ad39c;
-      --warn: #ffb020;
-      --bad: #ff6b6b;
+      --bg: #f4f8f4;
+      --bg-accent: #e6efe4;
+      --card: #ffffff;
+      --card-2: #f7fbf7;
+      --text: #102019;
+      --muted: #4f6658;
+      --border: #d8e5da;
+      --accent: #2b8f6f;
+      --good: #1f9b65;
+      --warn: #cc8c1a;
+      --bad: #c33f4f;
+      --shadow: 0 12px 34px rgba(18, 48, 33, 0.08);
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; }
     body {
-      background: radial-gradient(circle at top left, var(--bg-b), var(--bg-a) 65%);
-      color: var(--text);
-      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      margin: 0;
       min-height: 100vh;
-      padding: 1.25rem;
+      font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 92% 8%, rgba(43, 143, 111, 0.13), transparent 42%),
+        radial-gradient(circle at 8% 90%, rgba(204, 140, 26, 0.08), transparent 45%),
+        linear-gradient(165deg, var(--bg) 0%, var(--bg-accent) 100%);
+      padding: 1.1rem;
     }
 
     .wrap {
-      max-width: 1100px;
+      max-width: 1140px;
       margin: 0 auto;
       display: grid;
       gap: 1rem;
@@ -43,300 +46,766 @@
     .card {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
       padding: 1rem;
-      backdrop-filter: blur(6px);
+    }
+
+    .header-card {
+      display: grid;
+      gap: 0.75rem;
+      align-items: center;
+      grid-template-columns: 1fr auto;
+      background: linear-gradient(120deg, #ffffff 0%, #f4fbf7 100%);
     }
 
     .title {
-      margin-bottom: 0.25rem;
-      font-size: clamp(1.5rem, 4vw, 2.4rem);
-      letter-spacing: 0.02em;
+      margin: 0;
+      font-size: clamp(1.5rem, 3.9vw, 2.4rem);
+      line-height: 1.1;
+      letter-spacing: 0.01em;
     }
 
     .subtitle {
+      margin: 0.35rem 0 0;
       color: var(--muted);
       font-size: 0.95rem;
     }
 
-    .grid {
+    .segment {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.2rem;
+      background: #f5faf6;
+      gap: 0.2rem;
+    }
+
+    .segment button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+      font-family: inherit;
+      border-radius: 999px;
+      padding: 0.45rem 0.9rem;
+      cursor: pointer;
+    }
+
+    .segment button.active {
+      background: #173529;
+      color: #f5fff9;
+    }
+
+    .small-note {
+      margin-top: 0.3rem;
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-family: "IBM Plex Mono", monospace;
+    }
+
+    .hero {
       display: grid;
       gap: 1rem;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: 1.2fr 1fr;
+      align-items: stretch;
+    }
+
+    .hero-main {
+      border-radius: 16px;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      background: linear-gradient(145deg, #f8fffb 0%, #eef8f1 100%);
     }
 
     .kicker {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       text-transform: uppercase;
+      letter-spacing: 0.09em;
       color: var(--muted);
-      letter-spacing: 0.08em;
     }
 
-    .metric {
-      font-size: 1.9rem;
+    .hero-value {
+      margin-top: 0.4rem;
+      font-size: clamp(2rem, 7vw, 4rem);
       font-weight: 700;
-      margin-top: 0.3rem;
+      line-height: 1;
     }
 
-    .small {
-      margin-top: 0.35rem;
+    .tone-good { color: var(--good); }
+    .tone-warn { color: var(--warn); }
+    .tone-bad { color: var(--bad); }
+
+    .hero-caption {
+      margin-top: 0.6rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .hero-side {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .stat-box {
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--card-2);
+      padding: 0.8rem;
+    }
+
+    .stat-value {
+      margin-top: 0.25rem;
+      font-size: 1.55rem;
+      font-weight: 700;
+    }
+
+    .grid-3 {
+      display: grid;
+      gap: 0.9rem;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .info-card h3 {
+      margin: 0.35rem 0;
+      font-size: 1.08rem;
+    }
+
+    .info-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.35;
+      font-size: 0.94rem;
+    }
+
+    .trust-strip {
+      display: grid;
+      gap: 0.6rem;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .chip {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #f8fcf9;
+      padding: 0.65rem;
+    }
+
+    .chip-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .status-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-radius: 999px;
+      padding: 0.2rem 0.45rem;
+      white-space: nowrap;
+    }
+
+    .status-pill.fresh { color: #0f6f48; background: rgba(31, 155, 101, 0.16); }
+    .status-pill.stale { color: #805100; background: rgba(204, 140, 26, 0.18); }
+    .status-pill.missing { color: #8f2631; background: rgba(195, 63, 79, 0.18); }
+
+    .chip-age {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .mode { display: none; }
+    .mode.active { display: grid; gap: 1rem; }
+
+    .panel-title {
+      margin: 0 0 0.65rem;
+      font-size: 1.05rem;
+      letter-spacing: 0.01em;
+    }
+
+    .controls-inline {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.45rem;
       color: var(--muted);
       font-size: 0.9rem;
     }
 
-    .pill {
-      display: inline-block;
-      padding: 0.2rem 0.55rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
+    .checkbox {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      cursor: pointer;
+      user-select: none;
     }
 
-    .pill.high { background: rgba(42, 211, 156, 0.2); color: var(--good); }
-    .pill.medium { background: rgba(255, 176, 32, 0.2); color: var(--warn); }
-    .pill.low { background: rgba(255, 107, 107, 0.2); color: var(--bad); }
+    .expert-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 1rem;
+    }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 0.75rem;
+      font-size: 0.91rem;
     }
 
     th, td {
       text-align: left;
       border-bottom: 1px solid var(--border);
-      padding: 0.55rem 0.25rem;
-      font-size: 0.92rem;
+      padding: 0.5rem 0.25rem;
+      vertical-align: top;
     }
 
     th { color: var(--muted); font-weight: 500; }
 
-    .status-fresh { color: var(--good); }
-    .status-stale { color: var(--warn); }
-    .status-missing { color: var(--bad); }
-    .banner {
-      border-left: 4px solid var(--warn);
-      background: rgba(255, 176, 32, 0.15);
-      color: #ffd59a;
-      padding: 0.75rem 1rem;
-      border-radius: 10px;
+    .release-banner {
       display: none;
+      border: 1px solid rgba(204, 140, 26, 0.35);
+      border-left: 4px solid var(--warn);
+      background: rgba(204, 140, 26, 0.12);
+      border-radius: 12px;
+      padding: 0.75rem 0.9rem;
+      color: #64420a;
+      font-size: 0.92rem;
     }
 
-    ul {
-      margin-left: 1.2rem;
-      margin-top: 0.65rem;
+    details {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fcfffc;
+      padding: 0.65rem 0.8rem;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .meta-list {
+      margin: 0.5rem 0 0;
       color: var(--muted);
+      padding-left: 1.2rem;
       display: grid;
       gap: 0.3rem;
+      font-size: 0.9rem;
     }
 
-    footer {
-      font-size: 0.86rem;
-      color: var(--muted);
-      text-align: center;
-      margin-top: 0.8rem;
+    @media (max-width: 960px) {
+      .hero { grid-template-columns: 1fr; }
+      .grid-3 { grid-template-columns: 1fr; }
+      .trust-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .expert-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      body { padding: 0.7rem; }
+      .header-card { grid-template-columns: 1fr; }
+      .trust-strip { grid-template-columns: 1fr; }
+      .segment { width: 100%; justify-content: space-between; }
+      .segment button { flex: 1; }
+      th:nth-child(3), td:nth-child(3), th:nth-child(5), td:nth-child(5) { display: none; }
     }
   </style>
 </head>
 <body>
-  <main class="wrap">
-    <section class="card">
-      <h1 class="title">TrueNorth Index</h1>
-      <p class="subtitle">Daily CPI Nowcast (Estimate) - Canada - Updated at 06:00 UTC</p>
+  <main class="wrap" id="app">
+    <section class="card header-card">
+      <div>
+        <h1 class="title">TrueNorth Inflation Dashboard</h1>
+        <p class="subtitle">Canada inflation signal with `Easy` clarity and `Expert` diagnostics.</p>
+        <div class="small-note" id="asof">as of --</div>
+      </div>
+      <div>
+        <div class="segment" role="tablist" aria-label="View mode">
+          <button id="mode-easy" role="tab" aria-selected="true">Easy</button>
+          <button id="mode-expert" role="tab" aria-selected="false">Expert</button>
+        </div>
+      </div>
     </section>
 
-    <section class="grid">
-      <article class="card">
-        <div class="kicker">Headline</div>
-        <div class="metric" id="headline">--</div>
-        <div class="small" id="method">--</div>
+    <section id="release-banner" class="release-banner"></section>
+
+    <section class="card hero">
+      <article class="hero-main">
+        <div class="kicker">Official CPI (YoY)</div>
+        <div id="hero-yoy" class="hero-value">--</div>
+        <div id="hero-summary" class="hero-caption">Loading inflation context...</div>
       </article>
-      <article class="card">
-        <div class="kicker">Confidence</div>
-        <div class="metric"><span id="confidence-pill" class="pill low">--</span></div>
-        <div class="small" id="coverage">Coverage: --</div>
-      </article>
-      <article class="card">
-        <div class="kicker">Official CPI</div>
-        <div class="metric" id="official">--</div>
-        <div class="small" id="release-month">Latest release: --</div>
-      </article>
-      <article class="card">
-        <div class="kicker">As Of</div>
-        <div class="metric" id="asof">--</div>
-        <div class="small">All times in UTC</div>
-      </article>
-    </section>
-    <section id="release-banner" class="banner"></section>
-
-    <section class="card">
-      <h2>Nowcast Trend (Recent)</h2>
-      <canvas id="trendChart"></canvas>
+      <aside class="hero-side">
+        <div class="stat-box">
+          <div class="kicker">Nowcast Signal (MoM)</div>
+          <div id="hero-nowcast" class="stat-value">--</div>
+          <div class="small-note" id="hero-divergence">vs Official MoM: --</div>
+        </div>
+        <div class="stat-box">
+          <div class="kicker">Official Release</div>
+          <div id="hero-release" class="stat-value">--</div>
+          <div class="small-note" id="hero-confidence">Confidence: --</div>
+        </div>
+      </aside>
     </section>
 
-    <section class="card">
-      <h2>Category Contribution Snapshot</h2>
-      <canvas id="categoryChart"></canvas>
+    <section id="easy-mode" class="mode active" aria-labelledby="mode-easy">
+      <section class="grid-3">
+        <article class="card info-card">
+          <div class="kicker">Food Pressure</div>
+          <h3 id="card-food-title">--</h3>
+          <p id="card-food-body">--</p>
+        </article>
+        <article class="card info-card">
+          <div class="kicker">Shelter Signal</div>
+          <h3 id="card-shelter-title">--</h3>
+          <p id="card-shelter-body">--</p>
+        </article>
+        <article class="card info-card">
+          <div class="kicker">Purchasing Power</div>
+          <h3 id="card-power-title">--</h3>
+          <p id="card-power-body">--</p>
+        </article>
+      </section>
+
+      <section class="card">
+        <h2 class="panel-title">Nowcast Trend</h2>
+        <div class="controls-inline">
+          <label class="checkbox"><input type="checkbox" id="overlay-official" /> Show official MoM overlay</label>
+        </div>
+        <canvas id="easyTrendChart"></canvas>
+      </section>
+
+      <section class="card">
+        <h2 class="panel-title">Data Freshness</h2>
+        <div id="trust-strip" class="trust-strip"></div>
+      </section>
+
+      <details class="card" id="easy-caveats">
+        <summary>Methodology and caveats</summary>
+        <ul id="easy-notes" class="meta-list"></ul>
+      </details>
     </section>
 
-    <section class="card">
-      <h2>Source Health</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Source</th>
-            <th>Category</th>
-            <th>Tier</th>
-            <th>Status</th>
-            <th>Last Success</th>
-            <th>Age</th>
-          </tr>
-        </thead>
-        <tbody id="source-health-body"></tbody>
-      </table>
-    </section>
+    <section id="expert-mode" class="mode" aria-labelledby="mode-expert">
+      <section class="card">
+        <h2 class="panel-title">Official vs Nowcast Divergence (MoM)</h2>
+        <canvas id="divergenceChart"></canvas>
+      </section>
 
-    <section class="card">
-      <h2>Methodology and Caveats</h2>
-      <ul id="notes"></ul>
-      <footer>
-        Scope: National only (no provincial split), no prediction card, no external API endpoint in V1.
-      </footer>
+      <section class="expert-grid">
+        <article class="card">
+          <h2 class="panel-title">Category Drivers</h2>
+          <canvas id="categoryChart"></canvas>
+        </article>
+        <article class="card">
+          <h2 class="panel-title">Methodology Snapshot</h2>
+          <ul id="methodology-list" class="meta-list"></ul>
+        </article>
+      </section>
+
+      <section class="card">
+        <h2 class="panel-title">Source Diagnostics</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>Category</th>
+              <th>Tier</th>
+              <th>Status</th>
+              <th>Age</th>
+              <th>Detail</th>
+            </tr>
+          </thead>
+          <tbody id="source-health-body"></tbody>
+        </table>
+      </section>
     </section>
   </main>
 
   <script>
+    const UI_MODE_V2 = new URLSearchParams(window.location.search).get("ui_v2") !== "0";
+    const MODE_KEY = "truenorth_mode";
+    let easyTrendChart = null;
+    let divergenceChart = null;
+    let categoryChart = null;
+
     function pct(v, digits = 2) {
       if (v === null || v === undefined || Number.isNaN(v)) return "--";
-      return `${v.toFixed(digits)}%`;
+      return `${Number(v).toFixed(digits)}%`;
     }
 
     function maybe(v) {
       return v ?? "--";
     }
 
+    function toneClass(yoy) {
+      if (yoy === null || yoy === undefined || Number.isNaN(yoy)) return "";
+      if (yoy < 2) return "tone-good";
+      if (yoy <= 4) return "tone-warn";
+      return "tone-bad";
+    }
+
     function statusClass(status) {
-      return `status-${status || "missing"}`;
+      return status || "missing";
     }
 
     function fetchJsonWithFallback(primary, fallback) {
-      return fetch(primary).then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      }).catch(() => fetch(fallback).then(r => r.json()));
+      return fetch(primary)
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .catch(() => fetch(fallback).then(r => r.json()));
     }
 
-    Promise.all([
-      fetchJsonWithFallback("/v1/nowcast/latest", "data/latest.json"),
-      fetchJsonWithFallback("/v1/nowcast/history", "data/historical.json"),
-    ]).then(([latest, historical]) => {
-      const headline = latest.headline?.nowcast_mom_pct;
-      document.getElementById("headline").textContent = pct(headline, 3);
-      document.getElementById("method").textContent = latest.headline?.method_label || "--";
+    function setMode(mode) {
+      const easy = document.getElementById("easy-mode");
+      const expert = document.getElementById("expert-mode");
+      const easyBtn = document.getElementById("mode-easy");
+      const expertBtn = document.getElementById("mode-expert");
 
-      const confidence = (latest.headline?.confidence || "low").toLowerCase();
-      const pill = document.getElementById("confidence-pill");
-      pill.className = `pill ${confidence}`;
-      pill.textContent = confidence;
-      document.getElementById("coverage").textContent = `Coverage: ${(100 * (latest.headline?.coverage_ratio || 0)).toFixed(1)}%`;
+      const isEasy = mode !== "expert";
+      easy.classList.toggle("active", isEasy);
+      expert.classList.toggle("active", !isEasy);
+      easyBtn.classList.toggle("active", isEasy);
+      expertBtn.classList.toggle("active", !isEasy);
+      easyBtn.setAttribute("aria-selected", isEasy ? "true" : "false");
+      expertBtn.setAttribute("aria-selected", !isEasy ? "true" : "false");
+      localStorage.setItem(MODE_KEY, isEasy ? "easy" : "expert");
+    }
 
-      const mom = latest.official_cpi?.mom_pct;
-      const yoy = latest.official_cpi?.yoy_pct;
-      document.getElementById("official").textContent = `MoM ${pct(mom)} / YoY ${pct(yoy)}`;
-      document.getElementById("release-month").textContent = `Latest release: ${maybe(latest.official_cpi?.latest_release_month)}`;
+    function deriveCategoryFreshness(sourceHealth) {
+      const categories = ["food", "housing", "transport", "energy"];
+      const result = {};
+      for (const cat of categories) {
+        const rows = sourceHealth.filter(s => s.category === cat);
+        let status = "missing";
+        if (rows.some(r => r.status === "fresh")) status = "fresh";
+        else if (rows.some(r => r.status === "stale")) status = "stale";
+        const ages = rows.map(r => r.age_days).filter(v => Number.isInteger(v));
+        const minAge = ages.length ? Math.min(...ages) : null;
+        result[cat] = {
+          status,
+          updated: rows.find(r => r.age_days === minAge)?.updated_days_ago || (minAge === null ? "unknown" : `updated ${minAge} days ago`),
+        };
+      }
+      return result;
+    }
 
-      document.getElementById("asof").textContent = latest.as_of_date || "--";
-      const release = latest.release || {};
-      if (release.status && release.status !== "published") {
-        const banner = document.getElementById("release-banner");
-        banner.style.display = "block";
-        const reasons = (release.blocked_conditions || []).join(" | ");
-        banner.textContent = `Release gate status: ${release.status}. ${reasons}`;
+    function safeHistoryItems(historical) {
+      if (Array.isArray(historical.items)) return historical.items;
+      return Object.keys(historical || {}).sort().map(day => ({ date: day, ...(historical[day] || {}) }));
+    }
+
+    function renderEasyTrend(items, showOfficialOverlay) {
+      const days = items.map(d => d.date);
+      const nowcastVals = items.map(d => d.headline?.nowcast_mom_pct ?? null);
+      const officialVals = items.map(d => d.official_cpi?.mom_pct ?? null);
+      const datasets = [
+        {
+          label: "Nowcast MoM",
+          data: nowcastVals,
+          borderColor: "#2b8f6f",
+          backgroundColor: "rgba(43, 143, 111, 0.15)",
+          fill: true,
+          tension: 0.25,
+          borderWidth: 2,
+        },
+      ];
+      if (showOfficialOverlay) {
+        datasets.push({
+          label: "Official CPI MoM",
+          data: officialVals,
+          borderColor: "#cc8c1a",
+          backgroundColor: "rgba(204, 140, 26, 0)",
+          borderDash: [6, 5],
+          fill: false,
+          tension: 0.2,
+          borderWidth: 2,
+        });
       }
 
-      const notesEl = document.getElementById("notes");
-      (latest.notes || []).forEach(note => {
-        const li = document.createElement("li");
-        li.textContent = note;
-        notesEl.appendChild(li);
+      if (easyTrendChart) easyTrendChart.destroy();
+      easyTrendChart = new Chart(document.getElementById("easyTrendChart"), {
+        type: "line",
+        data: { labels: days, datasets },
+        options: {
+          responsive: true,
+          interaction: { mode: "index", intersect: false },
+          plugins: { legend: { labels: { color: "#204133" } } },
+          scales: {
+            y: { ticks: { color: "#4f6658" }, grid: { color: "rgba(16,32,25,0.08)" } },
+            x: { ticks: { color: "#4f6658" }, grid: { color: "rgba(16,32,25,0.08)" } },
+          },
+        },
+      });
+    }
+
+    function renderDivergence(items) {
+      const days = items.map(d => d.date);
+      const nowcast = items.map(d => d.headline?.nowcast_mom_pct ?? null);
+      const official = items.map(d => d.official_cpi?.mom_pct ?? null);
+      const spread = items.map(d => {
+        const n = d.headline?.nowcast_mom_pct;
+        const o = d.official_cpi?.mom_pct;
+        if (n === null || n === undefined || o === null || o === undefined) return null;
+        return Number((n - o).toFixed(4));
       });
 
+      if (divergenceChart) divergenceChart.destroy();
+      divergenceChart = new Chart(document.getElementById("divergenceChart"), {
+        data: {
+          labels: days,
+          datasets: [
+            {
+              type: "bar",
+              label: "Spread (Nowcast - Official)",
+              data: spread,
+              backgroundColor: spread.map(v => (v === null ? "rgba(0,0,0,0)" : v >= 0 ? "rgba(43, 143, 111, 0.25)" : "rgba(195, 63, 79, 0.25)")),
+              yAxisID: "y2",
+            },
+            {
+              type: "line",
+              label: "Nowcast MoM",
+              data: nowcast,
+              borderColor: "#2b8f6f",
+              backgroundColor: "rgba(43, 143, 111, 0.15)",
+              tension: 0.2,
+              yAxisID: "y",
+            },
+            {
+              type: "line",
+              label: "Official CPI MoM",
+              data: official,
+              borderColor: "#cc8c1a",
+              borderDash: [6, 5],
+              backgroundColor: "rgba(0,0,0,0)",
+              tension: 0.2,
+              yAxisID: "y",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: "index", intersect: false },
+          plugins: { legend: { labels: { color: "#204133" } } },
+          scales: {
+            y: {
+              position: "left",
+              ticks: { color: "#4f6658" },
+              grid: { color: "rgba(16,32,25,0.08)" },
+            },
+            y2: {
+              position: "right",
+              ticks: { color: "#4f6658" },
+              grid: { drawOnChartArea: false },
+            },
+            x: {
+              ticks: { color: "#4f6658" },
+              grid: { color: "rgba(16,32,25,0.08)" },
+            },
+          },
+        },
+      });
+    }
+
+    function renderCategoryChart(latest) {
+      const names = Object.keys(latest.categories || {});
+      const sorted = names
+        .map(k => {
+          const c = latest.categories[k] || {};
+          const contribution = c.proxy_level === null || c.daily_change_pct === null ? 0 : Number(c.weight) * Number(c.daily_change_pct);
+          return { key: k, contribution, points: c.points || 0 };
+        })
+        .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
+
+      if (categoryChart) categoryChart.destroy();
+      categoryChart = new Chart(document.getElementById("categoryChart"), {
+        type: "bar",
+        data: {
+          labels: sorted.map(s => `${s.key} (${s.points})`),
+          datasets: [{
+            label: "Weighted contribution",
+            data: sorted.map(s => s.contribution),
+            backgroundColor: sorted.map(s => (s.contribution >= 0 ? "rgba(43, 143, 111, 0.55)" : "rgba(195, 63, 79, 0.55)")),
+          }],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: "#204133" } } },
+          scales: {
+            y: { ticks: { color: "#4f6658" }, grid: { color: "rgba(16,32,25,0.08)" } },
+            x: { ticks: { color: "#4f6658" }, grid: { color: "rgba(16,32,25,0.08)" } },
+          },
+        },
+      });
+    }
+
+    function renderSourceTable(sourceHealth) {
       const tbody = document.getElementById("source-health-body");
-      (latest.source_health || []).forEach(row => {
+      tbody.innerHTML = "";
+      sourceHealth.forEach(row => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${row.source}</td>
           <td>${row.category}</td>
           <td>${row.tier}</td>
-          <td class="${statusClass(row.status)}">${row.status}</td>
-          <td>${row.last_success_timestamp || "--"}</td>
-          <td>${row.updated_days_ago || (row.age_days !== undefined && row.age_days !== null ? `updated ${row.age_days} days ago` : "--")}</td>
+          <td><span class="status-pill ${statusClass(row.status)}">${row.status}</span></td>
+          <td>${row.updated_days_ago || "--"}</td>
+          <td title="${(row.detail || "").replace(/"/g, '&quot;')}">${(row.detail || "--").slice(0, 80)}${(row.detail || "").length > 80 ? "..." : ""}</td>
         `;
         tbody.appendChild(tr);
       });
+    }
 
-      const histItems = Array.isArray(historical.items)
-        ? historical.items
-        : Object.keys(historical).sort().map(day => ({ date: day, ...historical[day] }));
-      const items = histItems.slice(-30);
-      const days = items.map(d => d.date);
-      const nowcastVals = items.map(d => d.headline?.nowcast_mom_pct ?? null);
-
-      new Chart(document.getElementById("trendChart"), {
-        type: "line",
-        data: {
-          labels: days,
-          datasets: [{
-            label: "Daily nowcast MoM %",
-            data: nowcastVals,
-            borderColor: "#48bfe3",
-            backgroundColor: "rgba(72, 191, 227, 0.18)",
-            fill: true,
-            tension: 0.25,
-          }],
-        },
-        options: {
-          responsive: true,
-          interaction: { mode: "index", intersect: false },
-          scales: {
-            y: { ticks: { color: "#94a9bc" }, grid: { color: "rgba(255,255,255,0.1)" } },
-            x: { ticks: { color: "#94a9bc" }, grid: { color: "rgba(255,255,255,0.1)" } },
-          },
-          plugins: { legend: { labels: { color: "#f0f4f8" } } },
-        },
+    function renderTrustStrip(sourceHealth) {
+      const map = deriveCategoryFreshness(sourceHealth);
+      const strip = document.getElementById("trust-strip");
+      strip.innerHTML = "";
+      ["food", "housing", "transport", "energy"].forEach(category => {
+        const item = map[category];
+        const chip = document.createElement("article");
+        chip.className = "chip";
+        chip.innerHTML = `
+          <div class="chip-head">
+            <strong>${category[0].toUpperCase() + category.slice(1)}</strong>
+            <span class="status-pill ${statusClass(item.status)}">${item.status}</span>
+          </div>
+          <div class="chip-age">${item.updated}</div>
+        `;
+        strip.appendChild(chip);
       });
+    }
 
-      const categoryNames = Object.keys(latest.categories || {});
-      const contributions = categoryNames.map(k => {
-        const c = latest.categories[k];
-        if (c.proxy_level === null || c.daily_change_pct === null) return 0;
-        return c.weight * c.daily_change_pct;
-      });
+    function renderHero(latest) {
+      const yoy = latest.official_cpi?.yoy_pct;
+      const mom = latest.official_cpi?.mom_pct;
+      const nowcast = latest.headline?.nowcast_mom_pct;
+      const divergence = (nowcast !== null && nowcast !== undefined && mom !== null && mom !== undefined)
+        ? Number((nowcast - mom).toFixed(3))
+        : null;
 
-      new Chart(document.getElementById("categoryChart"), {
-        type: "bar",
-        data: {
-          labels: categoryNames,
-          datasets: [{
-            label: "Weighted daily contribution",
-            data: contributions,
-            backgroundColor: ["#5ec576", "#48bfe3", "#ffb020", "#ff6b6b"],
-          }],
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: { ticks: { color: "#94a9bc" }, grid: { color: "rgba(255,255,255,0.1)" } },
-            x: { ticks: { color: "#94a9bc" }, grid: { color: "rgba(255,255,255,0.1)" } },
-          },
-          plugins: { legend: { labels: { color: "#f0f4f8" } } },
-        },
+      const hero = document.getElementById("hero-yoy");
+      hero.textContent = pct(yoy);
+      hero.className = `hero-value ${toneClass(yoy)}`;
+
+      let summary = "Official CPI is unavailable right now.";
+      if (yoy !== null && yoy !== undefined) {
+        if (yoy < 2) summary = "Inflation looks contained versus last year. Price pressure is relatively mild.";
+        else if (yoy <= 4) summary = "Inflation is in a moderate zone. Households may still feel selective pressure.";
+        else summary = "Inflation is elevated. Budget pressure is likely broad across essentials.";
+      }
+      document.getElementById("hero-summary").textContent = summary;
+      document.getElementById("hero-nowcast").textContent = pct(nowcast, 3);
+      document.getElementById("hero-divergence").textContent = `vs Official MoM: ${pct(divergence, 3)}`;
+      document.getElementById("hero-release").textContent = maybe(latest.official_cpi?.latest_release_month);
+      document.getElementById("hero-confidence").textContent = `Confidence: ${(latest.headline?.confidence || "--").toUpperCase()}`;
+    }
+
+    function renderEasyCards(latest) {
+      const categories = latest.categories || {};
+      const food = categories.food || {};
+      const shelter = categories.housing || {};
+      const topDriver = latest.meta?.top_driver || { category: null, contribution_pct: null };
+
+      document.getElementById("card-food-title").textContent = `Food basket status: ${(food.status || "missing").toUpperCase()}`;
+      document.getElementById("card-food-body").textContent = `Food proxy level is ${maybe(food.proxy_level)} from ${food.points || 0} tracked points.`;
+
+      document.getElementById("card-shelter-title").textContent = `Shelter pressure: ${(shelter.status || "missing").toUpperCase()}`;
+      document.getElementById("card-shelter-body").textContent = `Housing proxy level is ${maybe(shelter.proxy_level)} with ${shelter.points || 0} data points.`;
+
+      const yoy = latest.official_cpi?.yoy_pct;
+      const purchasingPower = yoy === null || yoy === undefined ? null : (100 / (1 + (Number(yoy) / 100)));
+      document.getElementById("card-power-title").textContent = purchasingPower === null
+        ? "Purchasing power: unavailable"
+        : `$100 buys about $${purchasingPower.toFixed(2)} of last year's basket`;
+      const topText = topDriver.category
+        ? `${topDriver.category} is currently the strongest driver (${pct(topDriver.contribution_pct, 3)} weighted impact).`
+        : "Top category driver will appear once enough daily history accumulates.";
+      document.getElementById("card-power-body").textContent = topText;
+    }
+
+    function renderNotes(latest) {
+      const ul = document.getElementById("easy-notes");
+      ul.innerHTML = "";
+      (latest.notes || []).forEach(note => {
+        const li = document.createElement("li");
+        li.textContent = note;
+        ul.appendChild(li);
       });
-    }).catch(err => {
-      document.body.innerHTML = `<main class="wrap"><section class="card"><h2>Data load error</h2><p>${String(err)}</p></section></main>`;
-    });
+    }
+
+    function renderMethodology(methodology, latest) {
+      const ul = document.getElementById("methodology-list");
+      ul.innerHTML = "";
+      const gate = methodology?.gate_policy || {};
+      const topDriver = latest.meta?.top_driver || {};
+      const rows = [
+        `APIFY freshness gate: <= ${gate.apify_max_age_days ?? "--"} days`,
+        `Required sources: ${(gate.required_sources || []).join(", ") || "--"}`,
+        `Energy source requirement: ${(gate.energy_required_any_of || []).join(" or ") || "--"}`,
+        `Coverage ratio: ${(100 * (latest.headline?.coverage_ratio || 0)).toFixed(1)}%`,
+        `Top driver: ${topDriver.category || "--"} (${pct(topDriver.contribution_pct, 3)})`,
+      ];
+      rows.forEach(text => {
+        const li = document.createElement("li");
+        li.textContent = text;
+        ul.appendChild(li);
+      });
+    }
+
+    function applyReleaseBanner(latest) {
+      const release = latest.release || {};
+      const banner = document.getElementById("release-banner");
+      if (release.status && release.status !== "published") {
+        banner.style.display = "block";
+        banner.textContent = `Release status: ${release.status}. ${(release.blocked_conditions || []).join(" | ")}`;
+      } else {
+        banner.style.display = "none";
+      }
+    }
+
+    function wireModeToggle() {
+      document.getElementById("mode-easy").addEventListener("click", () => setMode("easy"));
+      document.getElementById("mode-expert").addEventListener("click", () => setMode("expert"));
+      const initial = localStorage.getItem(MODE_KEY) || "easy";
+      setMode(initial);
+    }
+
+    if (!UI_MODE_V2) {
+      document.getElementById("app").innerHTML = "<section class='card'><h2>UI v2 is disabled</h2><p>Append <code>?ui_v2=1</code> to enable the Easy/Expert dashboard.</p></section>";
+    } else {
+      wireModeToggle();
+      Promise.all([
+        fetchJsonWithFallback("/v1/nowcast/latest", "data/latest.json"),
+        fetchJsonWithFallback("/v1/nowcast/history", "data/historical.json"),
+        fetchJsonWithFallback("/v1/methodology", "data/latest.json"),
+      ]).then(([latest, historical, methodology]) => {
+        document.getElementById("asof").textContent = `as of ${latest.as_of_date || "--"}`;
+        applyReleaseBanner(latest);
+        renderHero(latest);
+        renderEasyCards(latest);
+        renderNotes(latest);
+        renderTrustStrip(latest.source_health || []);
+        renderSourceTable(latest.source_health || []);
+        renderMethodology(methodology, latest);
+
+        const items = safeHistoryItems(historical).slice(-90);
+        renderEasyTrend(items, false);
+        renderDivergence(items);
+        renderCategoryChart(latest);
+
+        document.getElementById("overlay-official").addEventListener("change", (e) => {
+          renderEasyTrend(items, Boolean(e.target.checked));
+        });
+      }).catch(err => {
+        document.body.innerHTML = `<main class='wrap'><section class='card'><h2>Data load error</h2><p>${String(err)}</p></section></main>`;
+      });
+    }
   </script>
 </body>
 </html>

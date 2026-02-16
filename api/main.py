@@ -57,7 +57,15 @@ def nowcast_history(
             continue
         if end and day_date > end:
             continue
-        items.append({"date": day, **payload})
+        row = {"date": day, **payload}
+        headline = row.get("headline", {})
+        official = row.get("official_cpi", {})
+        nowcast_mom = headline.get("nowcast_mom_pct")
+        official_mom = official.get("mom_pct")
+        if headline.get("divergence_mom_pct") is None and nowcast_mom is not None and official_mom is not None:
+            headline["divergence_mom_pct"] = round(float(nowcast_mom) - float(official_mom), 4)
+            row["headline"] = headline
+        items.append(row)
     return {"items": items}
 
 

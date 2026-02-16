@@ -305,6 +305,28 @@ def compute_confidence(coverage_ratio: float, anomalies: int, blocked_conditions
     return confidence
 
 
+def compute_top_driver(categories: dict) -> dict:
+    """Return top absolute weighted category contribution for Easy mode cards."""
+    best_category: str | None = None
+    best_contribution: float | None = None
+    for category, payload in categories.items():
+        change = payload.get("daily_change_pct")
+        weight = payload.get("weight", 0.0)
+        if change is None:
+            continue
+        contribution = float(change) * float(weight)
+        if best_contribution is None or abs(contribution) > abs(best_contribution):
+            best_category = category
+            best_contribution = contribution
+
+    if best_category is None:
+        return {"category": None, "contribution_pct": None}
+    return {
+        "category": best_category,
+        "contribution_pct": round_or_none(best_contribution, 4),
+    }
+
+
 def build_notes(categories: dict, anomalies: int, rejected_points: int, blocked_conditions: list[str]) -> list[str]:
     notes: list[str] = [
         "This is an experimental nowcast estimate and not an official CPI release.",
@@ -410,11 +432,24 @@ def record_release_run(run_id: str, created_at: str, status: str, blocked_condit
 
 def update_historical(snapshot: dict, historical: dict) -> dict:
     day = snapshot["as_of_date"]
+    official = snapshot.get("official_cpi", {})
+    nowcast_mom = snapshot.get("headline", {}).get("nowcast_mom_pct")
+    official_mom = official.get("mom_pct")
+    divergence = None
+    if nowcast_mom is not None and official_mom is not None:
+        divergence = round_or_none(float(nowcast_mom) - float(official_mom), 4)
+
     historical[day] = {
         "headline": {
-            "nowcast_mom_pct": snapshot["headline"]["nowcast_mom_pct"],
+            "nowcast_mom_pct": nowcast_mom,
             "confidence": snapshot["headline"]["confidence"],
             "coverage_ratio": snapshot["headline"]["coverage_ratio"],
+            "divergence_mom_pct": divergence,
+        },
+        "official_cpi": {
+            "latest_release_month": official.get("latest_release_month"),
+            "mom_pct": official_mom,
+            "yoy_pct": official.get("yoy_pct"),
         },
         "categories": {
             k: {
@@ -480,6 +515,7 @@ def build_snapshot() -> dict:
             "total_points_after_quality_filters": len(filtered),
             "anomaly_points": anomalies,
             "rejected_points": rejected_points,
+            "top_driver": compute_top_driver(categories),
         },
         "release": {
             "run_id": run_id,
