@@ -12,8 +12,9 @@ from datetime import datetime, timezone
 from .common import fetch_url, utc_now_iso
 from .types import Quote, SourceHealth
 
-# The report URL is stable
-RENTALS_CA_URL = "https://rentals.ca/national-rent-report"
+# The report URL is stable but protected by Cloudflare JS logic.
+# We route via Google Web Cache to bypass the 403 Forbidden.
+RENTALS_CA_URL = "https://webcache.googleusercontent.com/search?q=cache:https://rentals.ca/national-rent-report"
 
 
 def scrape_housing_listings() -> tuple[list[Quote], list[SourceHealth]]:

@@ -46,24 +46,39 @@ def scrape_energy_fuel() -> tuple[list[Quote], list[SourceHealth]]:
         # Let's try to find a pattern: "Canada" ... then numbers.
         
         if True: # Always run search on full body
-            # Find all numbers like 140.5 or 160.2 (Prices are in cents, so 100-250 range)
-            price_pattern = re.compile(r"(\d{3}\.\d)")
-            matches = price_pattern.findall(html)
+            # NRCAN structure: Each week is a <tr>. The first <td> is the date.
+            # The next <td> is usually 'header4_1_1 header3_1' which represents Canada Average.
+            # We want the last row containing "headerDate" to get the latest week's data.
+            rows = html.split("<tr")
+            latest_row = None
+            for row in rows:
+                if 'headers="headerDate' in row:
+                    latest_row = row
             
-            valid_prices = []
-            for m in matches:
-                try:
-                    val = float(m)
-                    if 100.0 <= val <= 250.0:
-                        valid_prices.append(val)
-                except ValueError:
-                    pass
-
-            if valid_prices:
-                # Assume the last valid price in the document is the latest/most relevant
-                # (Tables usually order chronologically or put totals at bottom/right)
-                price_val = valid_prices[-1]
+            price_val = None
+            if latest_row:
+                # In the row, Canada is the first data column after the date.
+                # headers="header4_1_1 header3_1 header1">139.6</td>
+                match = re.search(r'<td[^>]*header3_1[^>]*>([\d\.]+)</td>', latest_row)
+                if match:
+                    try:
+                        price_val = float(match.group(1))
+                    except ValueError:
+                        pass
                 
+                # Fallback if specific header fails: just take the first number cell after date
+                if price_val is None:
+                    matches = re.findall(r'<td[^>]*>([\d\.]+)</td>', latest_row)
+                    for m in matches:
+                        try:
+                            val = float(m)
+                            if 100.0 <= val <= 300.0:
+                                price_val = val
+                                break
+                        except ValueError:
+                            pass
+
+            if price_val:
                 observed = datetime.now(timezone.utc).date()
                 
                 # Convert to "Index" or just "Price"?
@@ -101,7 +116,7 @@ def scrape_energy_fuel() -> tuple[list[Quote], list[SourceHealth]]:
                         tier=2,
                         status="missing",
                         last_success_timestamp=None,
-                        detail="Found 'Canada' string but no valid price pattern in NRCAN HTML.",
+                        detail="Found table row but no valid price pattern in NRCAN HTML.",
                         last_observation_period=None,
                     )
                 )

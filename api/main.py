@@ -12,7 +12,6 @@ from fastapi.responses import FileResponse
 from gate_policy import METHOD_VERSION, gate_policy_payload
 from models import NowcastSnapshot
 from source_catalog import SOURCE_CATALOG
-from api import contributions
 
 DATA_DIR = Path("data")
 LATEST_PATH = DATA_DIR / "latest.json"
@@ -24,8 +23,6 @@ RELEASE_EVENTS_PATH = DATA_DIR / "release_events.json"
 CONSENSUS_LATEST_PATH = DATA_DIR / "consensus_latest.json"
 
 app = FastAPI(title="True Inflation Canada API", version=METHOD_VERSION)
-
-app.include_router(contributions.router)
 
 # Serve index.html at root
 @app.get("/")

@@ -486,5 +486,248 @@
       "created_at": "2026-02-17T01:05:41+00:00",
       "published_at": "2026-02-17T01:05:41+00:00"
     }
+  },
+  "2026-02-21": {
+    "headline": {
+      "nowcast_mom_pct": 0.79,
+      "nowcast_yoy_pct": 1.827,
+      "confidence": "medium",
+      "coverage_ratio": 1.0,
+      "signal_quality_score": 88,
+      "lead_signal": "up",
+      "next_release_at_utc": null,
+      "consensus_yoy": null,
+      "consensus_spread_yoy": null,
+      "deviation_yoy_pct": null,
+      "divergence_mom_pct": 0.79
+    },
+    "official_cpi": {
+      "latest_release_month": "2026-01",
+      "mom_pct": 0.0,
+      "yoy_pct": 2.294,
+      "yoy_display_pct": 2.3
+    },
+    "categories": {
+      "food": {
+        "proxy_level": 4.2739,
+        "daily_change_pct": -6.866,
+        "status": "fresh"
+      },
+      "housing": {
+        "proxy_level": 183.7667,
+        "daily_change_pct": -0.217,
+        "status": "fresh"
+      },
+      "transport": {
+        "proxy_level": 130.4,
+        "daily_change_pct": 0.617,
+        "status": "fresh"
+      },
+      "energy": {
+        "proxy_level": 4.75,
+        "daily_change_pct": null,
+        "status": "fresh"
+      },
+      "communication": {
+        "proxy_level": 94.5878,
+        "daily_change_pct": 36.159,
+        "status": "fresh"
+      },
+      "health_personal": {
+        "proxy_level": 62.459,
+        "daily_change_pct": null,
+        "status": "fresh"
+      },
+      "recreation_education": {
+        "proxy_level": 61.4568,
+        "daily_change_pct": null,
+        "status": "fresh"
+      }
+    },
+    "category_contributions": {
+      "food": -1.1329,
+      "housing": -0.0651,
+      "transport": 0.0925,
+      "energy": null,
+      "communication": 1.6272,
+      "health_personal": null,
+      "recreation_education": null
+    },
+    "source_health": [
+      {
+        "source": "openfoodfacts_api",
+        "status": "fresh",
+        "category": "food",
+        "tier": 1,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:23:47+00:00",
+        "last_observation_period": null
+      },
+      {
+        "source": "statcan_food_prices",
+        "status": "fresh",
+        "category": "food",
+        "tier": 1,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:23:50+00:00",
+        "last_observation_period": "2025-12"
+      },
+      {
+        "source": "apify_loblaws",
+        "status": "fresh",
+        "category": "food",
+        "tier": 1,
+        "age_days": 5,
+        "last_success_timestamp": "2026-02-16T23:12:35+00:00",
+        "last_observation_period": null
+      },
+      {
+        "source": "statcan_gas_csv",
+        "status": "fresh",
+        "category": "transport",
+        "tier": 1,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:23:50+00:00",
+        "last_observation_period": "2026-01"
+      },
+      {
+        "source": "nrcan_fuel_scrape",
+        "status": "stale",
+        "category": "transport",
+        "tier": 2,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:23:52+00:00",
+        "last_observation_period": null
+      },
+      {
+        "source": "statcan_cpi_csv",
+        "status": "fresh",
+        "category": "housing",
+        "tier": 1,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:24:12+00:00",
+        "last_observation_period": "2026-01"
+      },
+      {
+        "source": "rentals_ca_scrape",
+        "status": "missing",
+        "category": "housing",
+        "tier": 2,
+        "age_days": null,
+        "last_success_timestamp": null,
+        "last_observation_period": null
+      },
+      {
+        "source": "oeb_scrape",
+        "status": "fresh",
+        "category": "energy",
+        "tier": 2,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:24:17+00:00",
+        "last_observation_period": null
+      },
+      {
+        "source": "statcan_energy_cpi_csv",
+        "status": "fresh",
+        "category": "energy",
+        "tier": 1,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:24:27+00:00",
+        "last_observation_period": "2026-01"
+      },
+      {
+        "source": "statcan_cpi_csv",
+        "status": "fresh",
+        "category": "communication",
+        "tier": 1,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:24:37+00:00",
+        "last_observation_period": "2026-01"
+      },
+      {
+        "source": "ised_mobile_plan_tracker",
+        "status": "fresh",
+        "category": "communication",
+        "tier": 2,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:24:37+00:00",
+        "last_observation_period": null
+      },
+      {
+        "source": "crtc_cmr_report",
+        "status": "fresh",
+        "category": "communication",
+        "tier": 2,
+        "age_days": 4,
+        "last_success_timestamp": "2026-02-17T01:06:18+00:00",
+        "last_observation_period": null
+      },
+      {
+        "source": "statcan_cpi_csv",
+        "status": "fresh",
+        "category": "health_personal",
+        "tier": 1,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:24:47+00:00",
+        "last_observation_period": "2026-01"
+      },
+      {
+        "source": "healthcanada_dpd",
+        "status": "fresh",
+        "category": "health_personal",
+        "tier": 2,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:24:48+00:00",
+        "last_observation_period": null
+      },
+      {
+        "source": "pmprb_reports",
+        "status": "fresh",
+        "category": "health_personal",
+        "tier": 2,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:24:51+00:00",
+        "last_observation_period": null
+      },
+      {
+        "source": "statcan_cpi_csv",
+        "status": "fresh",
+        "category": "recreation_education",
+        "tier": 1,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:25:00+00:00",
+        "last_observation_period": "2026-01"
+      },
+      {
+        "source": "parkscanada_fees",
+        "status": "fresh",
+        "category": "recreation_education",
+        "tier": 2,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:25:01+00:00",
+        "last_observation_period": null
+      },
+      {
+        "source": "statcan_education_portal",
+        "status": "fresh",
+        "category": "recreation_education",
+        "tier": 2,
+        "age_days": 0,
+        "last_success_timestamp": "2026-02-21T20:25:01+00:00",
+        "last_observation_period": null
+      }
+    ],
+    "release": {
+      "run_id": "run_91ef285e8085",
+      "status": "published",
+      "lifecycle_states": [
+        "started",
+        "completed",
+        "published"
+      ],
+      "blocked_conditions": [],
+      "created_at": "2026-02-21T20:23:45+00:00",
+      "published_at": "2026-02-21T20:23:45+00:00"
+    }
   }
 }
