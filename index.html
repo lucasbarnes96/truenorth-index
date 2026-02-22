@@ -758,6 +758,7 @@
 
   <!-- MAIN -->
   <main class="page" id="app">
+    <div class="small-note">Experimental open-source nowcast using public data. Not official StatCan CPI.</div>
 
     <!-- RELEASE BANNER -->
     <div id="release-banner" class="release-banner"></div>
@@ -862,7 +863,7 @@
     </details>
 
     <details class="accordion card-sm">
-      <summary>Calibration &amp; Maturity</summary>
+      <summary>Calibration & Maturity</summary>
       <div class="accordion-body">
         <ul id="calibration-list" class="meta-list"></ul>
       </div>
@@ -947,20 +948,32 @@
         );
     }
 
-    function fetchLatestSnapshot() {
-      return fetch("/v1/nowcast/latest")
-        .then((r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json();
-        })
-        .catch(() =>
-          fetch("data/published_latest.json")
-            .then((r) => {
-              if (!r.ok) throw new Error(`HTTP ${r.status}`);
-              return r.json();
-            })
-            .catch(() => fetchJsonWithFallback("data/latest.json", "data/published_latest.json"))
+    function fetchFirstJson(urls) {
+      const list = (Array.isArray(urls) ? urls : []).filter(Boolean);
+      let chain = Promise.reject(new Error("no_urls"));
+      for (const url of list) {
+        chain = chain.catch(() =>
+          fetch(url).then((r) => {
+            if (!r.ok) throw new Error(`HTTP ${r.status} from ${url}`);
+            return r.text().then((text) => {
+              try {
+                return JSON.parse(text);
+              } catch {
+                throw new Error(`Invalid JSON from ${url}`);
+              }
+            });
+          })
         );
+      }
+      return chain.catch(() => ({}));
+    }
+
+    function fetchLatestSnapshot() {
+      return fetchFirstJson([
+        "data/published_latest.json",
+        "data/latest.json",
+        "/v1/nowcast/latest",
+      ]);
     }
 
     function safeHistoryItems(historical) {
@@ -1190,6 +1203,12 @@
         health_personal: "Health / personal",
         recreation_education: "Recreation / edu",
       };
+      if (!Array.isArray(sourceHealth) || sourceHealth.length === 0) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="7">No source diagnostics available for this snapshot.</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
       sourceHealth.forEach(row => {
         const tr = document.createElement("tr");
         const statusClass = row.status === "ok" ? "status-ok" : row.status === "warn" ? "status-warn" : "status-err";
@@ -1221,6 +1240,10 @@
       const officialYoy = official.yoy_display_pct ?? official.yoy_pct;
       const consensusYoy = consensus?.headline_yoy ?? latest.headline?.consensus_yoy;
       const consensusMom = consensus?.headline_mom ?? null;
+      const consensusPayload = consensus || latest.meta?.consensus || {};
+      const consensusSources = (consensusPayload.sources || []).map((s) => s.source).filter(Boolean);
+      const consensusSourceLabel = consensusSources.length ? `Sources: ${consensusSources.join(", ")}` : "Sources unavailable";
+      const consensusGuardrailReason = consensusPayload.guardrails?.reason;
       const deviation = latest.headline?.deviation_yoy_pct ?? latest.headline?.consensus_spread_yoy;
       const deviationEnabled = liveDays >= 30 && consensusYoy !== null && consensusYoy !== undefined;
       const nextRelease = upcomingRelease?.next_release || latest.meta?.release_intelligence || {};
@@ -1240,13 +1263,13 @@
           title: "Consensus YoY",
           value: consensusYoy === null || consensusYoy === undefined ? "Unavailable" : `${Number(consensusYoy).toFixed(2)}%`,
           note: consensusYoy === null || consensusYoy === undefined
-            ? "Not yet available"
-            : "Free-source estimate",
+            ? `Consensus withheld (${consensusGuardrailReason || "no_usable_sources"}). ${consensusSourceLabel}.`
+            : `${consensusSourceLabel}.`,
         },
         {
           title: "Consensus MoM",
           value: consensusMom === null || consensusMom === undefined ? "--" : `${Number(consensusMom).toFixed(2)}%`,
-          note: "Free-source estimate",
+          note: `${consensusSourceLabel}.`,
         },
         {
           title: "Last Actual CPI",
@@ -1259,7 +1282,7 @@
             ? "Unavailable"
             : `${Number(deviation).toFixed(2)} pp`,
           note: consensusYoy === null || consensusYoy === undefined
-            ? "Consensus unavailable"
+            ? `Consensus unavailable (${consensusGuardrailReason || "no_usable_sources"}). ${consensusSourceLabel}.`
             : liveDays < 30
               ? "Needs 30 live days"
               : "Nowcast YoY − consensus YoY",
@@ -1428,7 +1451,7 @@
       const rows = [
         "Official CPI (YoY): year-over-year inflation from Statistics Canada.",
         "Nowcast Signal: model-implied annual inflation from live public data signals.",
-        "Deviation: nowcast YoY minus available consensus YoY.",
+        "Deviation from Expectations: nowcast YoY minus available consensus YoY.",
         "Data quality score reflects source coverage, recency, anomaly filtering, and diversity.",
         "Live nowcast began Feb 16 2026 by design for authenticity.",
       ];
@@ -1456,7 +1479,7 @@
         if (!res.ok) return;
         const stats = await res.json();
         if (stats.length === 0) return;
-        const section = document.getElementByI'co-section');
+        const section = document.getElementById('community-section');
         const grid = document.getElementById('community-stats-grid');
         section.style.display = 'block';
         grid.innerHTML = '';
@@ -1486,14 +1509,17 @@
       fetchCommunityStats();
       Promise.all([
         fetchLatestSnapshot(),
-        fetchJsonWithFallback("/v1/nowcast/history", "data/historical.json"),
-        fetchJsonWithFallback("/v1/methodology", "data/published_latest.json"),
-        fetchJsonWithFallback("/v1/performance/summary", "data/performance_summary.json"),
-        fetchJsonWithFallback("/v1/releases/upcoming", "data/release_events.json"),
-        fetchJsonWithFallback("/v1/consensus/latest", "data/consensus_latest.json"),
-        fetchJsonWithFallback("/v1/forecast/next_release", "data/latest.json"),
-        fetchJsonWithFallback("/v1/calibration/status", "data/latest.json"),
+        fetchFirstJson(["data/historical.json", "/v1/nowcast/history"]),
+        fetchFirstJson(["/v1/methodology", "data/latest.json"]),
+        fetchFirstJson(["data/performance_summary.json", "/v1/performance/summary"]),
+        fetchFirstJson(["data/release_events.json", "/v1/releases/upcoming"]),
+        fetchFirstJson(["data/consensus_latest.json", "/v1/consensus/latest"]),
+        fetchFirstJson(["data/latest.json", "/v1/forecast/next_release"]),
+        fetchFirstJson(["data/latest.json", "/v1/calibration/status"]),
       ]).then(([latest, historical, methodology, performance, upcomingRelease, consensus, forecast, calibration]) => {
+        if (!latest || !latest.headline) {
+          throw new Error("No nowcast snapshot available from data or API.");
+        }
         document.getElementById("asof").textContent = `as of ${latest.as_of_date || "--"}`;
         const items = safeHistoryItems(historical).slice(-365);
         const liveDays = countLiveNowcastDays(items);
