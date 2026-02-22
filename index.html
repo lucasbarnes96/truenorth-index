@@ -3,557 +3,907 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>True Inflation Canada - Inflation Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>True Inflation Canada</title>
+  <meta name="description" content="Finance-first Canadian inflation nowcast with transparent source diagnostics." />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
-
+    /* =========================================================
+       DESIGN TOKENS — Apple-inspired
+    ========================================================= */
     :root {
-      --bg: #f4f8f4;
-      --bg-accent: #e6efe4;
-      --card: #ffffff;
-      --card-2: #f7fbf7;
-      --text: #102019;
-      --muted: #4f6658;
-      --border: #d8e5da;
-      --accent: #2b8f6f;
-      --good: #1f9b65;
-      --warn: #cc8c1a;
-      --bad: #c33f4f;
-      --shadow: 0 12px 34px rgba(18, 48, 33, 0.08);
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --surface-2: #f5f5f7;
+      --surface-elevated: rgba(255, 255, 255, 0.85);
+      --border: rgba(0, 0, 0, 0.08);
+      --border-strong: rgba(0, 0, 0, 0.14);
+
+      --text: #1d1d1f;
+      --text-secondary: #6e6e73;
+      --text-tertiary: #98989d;
+
+      --blue: #0071e3;
+      --blue-light: #e8f1fb;
+      --green: #28cd41;
+      --green-light: #e3f8e7;
+      --amber: #ff9f0a;
+      --amber-light: #fff4e0;
+      --red: #ff3b30;
+      --red-light: #ffe5e4;
+
+      --accent: var(--blue);
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 2px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.10), 0 2px 8px rgba(0, 0, 0, 0.06);
+
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", monospace;
     }
 
-    * {
+    /* =========================================================
+       RESET & BASE
+    ========================================================= */
+    *,
+    *::before,
+    *::after {
       box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      -webkit-text-size-adjust: 100%;
     }
 
     body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+      font-family: var(--font);
+      background: var(--bg);
       color: var(--text);
-      background:
-        radial-gradient(circle at 92% 8%, rgba(43, 143, 111, 0.13), transparent 42%),
-        radial-gradient(circle at 8% 90%, rgba(204, 140, 26, 0.08), transparent 45%),
-        linear-gradient(165deg, var(--bg) 0%, var(--bg-accent) 100%);
-      padding: 1.1rem;
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
-    .wrap {
-      max-width: 1140px;
-      margin: 0 auto;
-      display: grid;
+    /* =========================================================
+       STICKY NAV
+    ========================================================= */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(245, 245, 247, 0.72);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--border);
+      padding: 0 max(1.25rem, env(safe-area-inset-right));
+      padding-left: max(1.25rem, env(safe-area-inset-left));
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 1rem;
     }
 
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-      padding: 1rem;
-    }
-
-    .header-card {
-      display: grid;
-      gap: 0.75rem;
+    .nav-brand {
+      display: flex;
       align-items: center;
-      grid-template-columns: 1fr auto;
-      background: linear-gradient(120deg, #ffffff 0%, #f4fbf7 100%);
+      gap: 0.6rem;
     }
 
-    .title {
-      margin: 0;
-      font-size: clamp(1.5rem, 3.9vw, 2.4rem);
-      line-height: 1.1;
+    .nav-logo {
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, #0071e3 0%, #42a5f5 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .nav-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+
+    .nav-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-date {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    /* =========================================================
+       PAGE LAYOUT
+    ========================================================= */
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem max(1.25rem, env(safe-area-inset-right)) 3rem;
+      padding-left: max(1.25rem, env(safe-area-inset-left));
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* =========================================================
+       CARDS
+    ========================================================= */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      padding: 1.5rem;
+    }
+
+    .card-sm {
+      padding: 1.1rem 1.25rem;
+    }
+
+    /* =========================================================
+       SECTION LABELS
+    ========================================================= */
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+
+    /* =========================================================
+       PILLS / BADGES
+    ========================================================= */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
       letter-spacing: 0.01em;
     }
 
-    .subtitle {
-      margin: 0.35rem 0 0;
-      color: var(--muted);
-      font-size: 0.95rem;
+    .pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
     }
 
-    .segment {
-      display: inline-flex;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 0.2rem;
-      background: #f5faf6;
-      gap: 0.2rem;
+    .pill-green {
+      background: var(--green-light);
+      color: #1a7f2e;
     }
 
-    .segment button {
-      border: 0;
-      background: transparent;
-      color: var(--muted);
-      font-weight: 700;
-      font-family: inherit;
-      border-radius: 999px;
-      padding: 0.45rem 0.9rem;
-      cursor: pointer;
+    .pill-amber {
+      background: var(--amber-light);
+      color: #a85e00;
     }
 
-    .segment button.active {
-      background: #173529;
-      color: #f5fff9;
+    .pill-red {
+      background: var(--red-light);
+      color: #c0392b;
     }
 
-    .small-note {
-      margin-top: 0.3rem;
-      color: var(--muted);
-      font-size: 0.84rem;
-      font-family: "IBM Plex Mono", monospace;
+    .pill-blue {
+      background: var(--blue-light);
+      color: #004bab;
     }
 
-    .hero {
+    /* =========================================================
+       RELEASE BANNER
+    ========================================================= */
+    .release-banner {
+      display: none;
+      border-radius: var(--radius-md);
+      background: var(--amber-light);
+      border: 1px solid rgba(255, 159, 10, 0.3);
+      padding: 0.75rem 1.1rem;
+      font-size: 0.85rem;
+      color: #7a4700;
+    }
+
+    /* =========================================================
+       HERO SECTION
+    ========================================================= */
+    .hero-grid {
       display: grid;
+      grid-template-columns: 1fr auto;
       gap: 1rem;
-      grid-template-columns: 1.2fr 1fr;
-      align-items: stretch;
+      align-items: start;
     }
 
-    .hero-main {
-      border-radius: 16px;
-      padding: 1rem;
-      border: 1px solid var(--border);
-      background: linear-gradient(145deg, #f8fffb 0%, #eef8f1 100%);
-    }
-
-    .kicker {
-      font-size: 0.78rem;
+    .hero-eyebrow {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      letter-spacing: 0.09em;
-      color: var(--muted);
+      color: var(--text-secondary);
+      margin-bottom: 0.4rem;
     }
 
-    .hero-value {
-      margin-top: 0.4rem;
-      font-size: clamp(2rem, 7vw, 4rem);
+    .hero-number {
+      font-size: clamp(4rem, 12vw, 7rem);
       font-weight: 700;
+      letter-spacing: -0.04em;
       line-height: 1;
+      margin-bottom: 0.6rem;
     }
 
-    .tone-good {
-      color: var(--good);
+    .hero-number.tone-good {
+      color: #28cd41;
     }
 
-    .tone-warn {
-      color: var(--warn);
+    .hero-number.tone-warn {
+      color: #ff9f0a;
     }
 
-    .tone-bad {
-      color: var(--bad);
+    .hero-number.tone-bad {
+      color: #ff3b30;
+    }
+
+    .hero-number.tone-neutral {
+      color: var(--text);
     }
 
     .hero-caption {
-      margin-top: 0.6rem;
-      color: var(--muted);
-      line-height: 1.35;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      max-width: 38ch;
     }
 
-    .hero-side {
-      display: grid;
+    .hero-stats {
+      display: flex;
+      flex-direction: column;
       gap: 0.75rem;
+      min-width: 180px;
     }
 
-    .stat-box {
-      border-radius: 14px;
+    @media (max-width: 640px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-stats {
+        flex-direction: row;
+        flex-wrap: wrap;
+        min-width: 0;
+      }
+    }
+
+    .stat-chip {
+      background: var(--surface-2);
       border: 1px solid var(--border);
-      background: var(--card-2);
-      padding: 0.8rem;
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1rem;
+      flex: 1;
+      min-width: 130px;
     }
 
-    .stat-value {
-      margin-top: 0.25rem;
-      font-size: 1.55rem;
+    .stat-chip .eyebrow {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 0.3rem;
+    }
+
+    .stat-chip .value {
+      font-size: 1.35rem;
       font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      font-family: var(--font-mono);
     }
 
-    .grid-3 {
+    .stat-chip .note {
+      font-size: 0.72rem;
+      color: var(--text-tertiary);
+      margin-top: 0.2rem;
+      font-family: var(--font-mono);
+    }
+
+    /* =========================================================
+       PULSE — LEADING INDICATORS
+    ========================================================= */
+    .pulse-row {
       display: grid;
-      gap: 0.9rem;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .info-card h3 {
-      margin: 0.35rem 0;
-      font-size: 1.08rem;
-    }
-
-    .info-card p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.35;
-      font-size: 0.94rem;
-    }
-
-    .release-grid {
-      display: grid;
-      gap: 0.6rem;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .chip {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: #f8fcf9;
-      padding: 0.65rem;
-    }
-
-    .chip-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 0.35rem;
-    }
-
-    .chip-age {
-      color: var(--muted);
-      font-size: 0.85rem;
-    }
-
-    .mode {
-      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 1rem;
     }
 
-    .panel-title {
-      margin: 0 0 0.65rem;
-      font-size: 1.05rem;
-      letter-spacing: 0.01em;
-    }
-
-    .controls-inline {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      margin-bottom: 0.45rem;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    .checkbox {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .expert-grid {
-      display: grid;
-      grid-template-columns: 1.1fr 1fr;
-      gap: 1rem;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.91rem;
-    }
-
-    th,
-    td {
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-      padding: 0.5rem 0.25rem;
-      vertical-align: top;
-    }
-
-    th {
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    .release-banner {
-      display: none;
-      border: 1px solid rgba(204, 140, 26, 0.35);
-      border-left: 4px solid var(--warn);
-      background: rgba(204, 140, 26, 0.12);
-      border-radius: 12px;
-      padding: 0.75rem 0.9rem;
-      color: #64420a;
-      font-size: 0.92rem;
-    }
-
-    details {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: #fcfffc;
-      padding: 0.65rem 0.8rem;
-    }
-
-    summary {
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    .meta-list {
-      margin: 0.5rem 0 0;
-      color: var(--muted);
-      padding-left: 1.2rem;
-      display: grid;
-      gap: 0.3rem;
-      font-size: 0.9rem;
-    }
-
-    .chart-placeholder {
-      margin: 0.5rem 0 0;
-      color: var(--muted);
-      font-size: 0.92rem;
-    }
-
-    @media (max-width: 960px) {
-      .hero {
+    @media (max-width: 480px) {
+      .pulse-row {
         grid-template-columns: 1fr;
       }
-
-      .grid-3 {
-        grid-template-columns: 1fr;
-      }
-
-      .release-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .expert-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 560px) {
-      body {
-        padding: 0.7rem;
-      }
-
-      .header-card {
-        grid-template-columns: 1fr;
-      }
-
-      .release-grid {
-        grid-template-columns: 1fr;
-      }
-
-      th:nth-child(3),
-      td:nth-child(3),
-      th:nth-child(5),
-      td:nth-child(5) {
-        display: none;
-      }
-    }
-
-    .pulse-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
     }
 
     .pulse-card {
-      background: #173529;
-      color: #f4f8f4;
-      border-radius: 16px;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.1rem 1.25rem;
+      box-shadow: var(--shadow-sm);
+      border-left: 3px solid var(--blue);
       position: relative;
-      overflow: hidden;
     }
 
-    .pulse-card::after {
-      content: "";
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(43, 143, 111, 0.15) 0%, transparent 60%);
-      pointer-events: none;
+    .pulse-card.gas {
+      border-left-color: var(--amber);
     }
 
-    .pulse-label {
-      font-size: 0.8rem;
+    .pulse-eyebrow {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.07em;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      opacity: 0.8;
-      margin-bottom: 0.35rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.4rem;
       display: flex;
       align-items: center;
       gap: 0.4rem;
     }
 
-    .pulse-dot {
-      width: 8px;
-      height: 8px;
-      background: #1f9b65;
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--green);
       border-radius: 50%;
-      box-shadow: 0 0 8px #1f9b65;
-      animation: pulse 2s infinite;
+      animation: blink 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 0.5;
+        transform: scale(0.9);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.1);
+      }
     }
 
     .pulse-value {
       font-size: 1.8rem;
       font-weight: 700;
-      font-family: "Space Grotesk", sans-serif;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      font-family: var(--font-mono);
     }
 
-    .pulse-sub {
-      font-size: 0.85rem;
-      opacity: 0.7;
+    .pulse-source {
+      font-size: 0.72rem;
+      color: var(--text-tertiary);
       margin-top: 0.2rem;
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--font-mono);
     }
 
-    @keyframes pulse {
-      0% {
-        opacity: 0.6;
-        transform: scale(0.95);
-      }
+    /* =========================================================
+       RELEASE INTELLIGENCE GRID
+    ========================================================= */
+    .chip-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
 
-      50% {
-        opacity: 1;
-        transform: scale(1.05);
-      }
-
-      100% {
-        opacity: 0.6;
-        transform: scale(0.95);
+    @media (max-width: 768px) {
+      .chip-grid {
+        grid-template-columns: repeat(2, 1fr);
       }
     }
 
-    @media (max-width: 600px) {
-      .pulse-grid {
+    @media (max-width: 480px) {
+      .chip-grid {
         grid-template-columns: 1fr;
       }
+    }
+
+    .intel-chip {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.1rem;
+      transition: box-shadow 0.15s ease;
+    }
+
+    .intel-chip:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .intel-chip .eyebrow {
+      font-size: 0.67rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 0.4rem;
+    }
+
+    .intel-chip .chip-value {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+      font-family: var(--font-mono);
+      letter-spacing: -0.01em;
+      margin-bottom: 0.25rem;
+      word-break: break-word;
+    }
+
+    .intel-chip .chip-note {
+      font-size: 0.7rem;
+      color: var(--text-tertiary);
+      font-family: var(--font-mono);
+    }
+
+    /* =========================================================
+       CHARTS
+    ========================================================= */
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 280px;
+    }
+
+    @media (max-width: 480px) {
+      .chart-container {
+        height: 220px;
+      }
+    }
+
+    /* =========================================================
+       TWO COLUMN EXPERT GRID
+    ========================================================= */
+    .expert-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .expert-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* =========================================================
+       TABLE — Data Source Diagnostics
+    ========================================================= */
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: var(--radius-md);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      min-width: 560px;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-strong);
+      background: var(--surface-2);
+    }
+
+    thead th:first-child {
+      border-radius: var(--radius-sm) 0 0 0;
+    }
+
+    thead th:last-child {
+      border-radius: 0 var(--radius-sm) 0 0;
+    }
+
+    tbody td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text);
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:nth-child(even) td {
+      background: #fafafa;
+    }
+
+    .status-ok {
+      color: #1a7f2e;
+      font-weight: 600;
+    }
+
+    .status-warn {
+      color: #a85e00;
+      font-weight: 600;
+    }
+
+    .status-err {
+      color: #c0392b;
+      font-weight: 600;
+    }
+
+    /* =========================================================
+       ACCORDION / DETAILS
+    ========================================================= */
+    .accordion {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .accordion summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 1rem 1.25rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .accordion summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .accordion summary::after {
+      content: "+";
+      font-size: 1.2rem;
+      font-weight: 300;
+      color: var(--text-secondary);
+      transition: transform 0.2s ease;
+    }
+
+    .accordion[open] summary::after {
+      content: "−";
+    }
+
+    .accordion-body {
+      padding: 0 1.25rem 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .meta-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding-top: 0.75rem;
+    }
+
+    .meta-list li {
+      font-size: 0.86rem;
+      color: var(--text-secondary);
+      padding-left: 1rem;
+      position: relative;
+      line-height: 1.5;
+    }
+
+    .meta-list li::before {
+      content: "·";
+      position: absolute;
+      left: 0;
+      color: var(--text-tertiary);
+    }
+
+    /* =========================================================
+       HOW TO READ — explainer
+    ========================================================= */
+    .explainer-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    @media (max-width: 560px) {
+      .explainer-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .explainer-item {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.9rem 1rem;
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* =========================================================
+       PURCHASING POWER CARD
+    ========================================================= */
+    .power-card {
+      background: linear-gradient(135deg, #f0f7ff 0%, #e8f4fd 100%);
+      border: 1px solid rgba(0, 113, 227, 0.15);
+    }
+
+    .power-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0.4rem 0 0.5rem;
+    }
+
+    .power-body {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* =========================================================
+       COMMUNITY SECTION
+    ========================================================= */
+    #community-section {
+      display: none;
+    }
+
+    .community-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.75rem;
+    }
+
+    /* =========================================================
+       FOOTER
+    ========================================================= */
+    .footer {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-tertiary);
+      padding: 1rem 0 calc(1rem + env(safe-area-inset-bottom));
+      line-height: 1.6;
+    }
+
+    .footer a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    /* =========================================================
+       UTILITY
+    ========================================================= */
+    .tone-good {
+      color: #28cd41;
+    }
+
+    .tone-warn {
+      color: #ff9f0a;
+    }
+
+    .tone-bad {
+      color: #ff3b30;
+    }
+
+    .loading {
+      color: var(--text-tertiary);
+      font-size: 0.9rem;
+    }
+
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      margin-bottom: 1rem;
+    }
+
+    .chart-placeholder {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      padding: 1.5rem 0;
+      text-align: center;
+    }
+
+    .small-note {
+      font-size: 0.75rem;
+      color: var(--text-tertiary);
+      font-family: var(--font-mono);
     }
   </style>
 </head>
 
 <body>
-  <main class="wrap" id="app">
-    <section class="card header-card">
-      <div>
-        <h1 class="title">True Inflation Canada Dashboard</h1>
-        <p class="subtitle">Finance-first Canadian inflation nowcast with transparent source diagnostics.</p>
-        <div class="small-note">Experimental open-source nowcast using public data. Not official StatCan CPI.</div>
-        <div class="small-note" id="asof">as of --</div>
-      </div>
-      </div>
-    </section>
 
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-brand">
+      <div class="nav-logo">🍁</div>
+      <span class="nav-title">True Inflation Canada</span>
+    </div>
+    <div class="nav-meta">
+      <span class="nav-date" id="asof">—</span>
+      <span class="pill pill-blue" style="font-size:0.7rem; padding:0.2rem 0.6rem;">NOWCAST</span>
+    </div>
+  </nav>
 
+  <!-- MAIN -->
+  <main class="page" id="app">
 
-    <section id="release-banner" class="release-banner"></section>
+    <!-- RELEASE BANNER -->
+    <div id="release-banner" class="release-banner"></div>
 
-    <section class="pulse-grid" id="pulse-section" style="display: none;">
-      <div class="pulse-card">
-        <div class="pulse-label">
-          <div class="pulse-dot"></div>Avg Asking Rent (Canada)
-        </div>
-        <div class="pulse-value" id="pulse-rent">--</div>
-        <div class="pulse-sub">Source: Rentals.ca (Leading Indicator)</div>
-      </div>
-      <div class="pulse-card" style="background: #202b36;">
-        <div class="pulse-label">
-          <div class="pulse-dot" style="background:#cc8c1a; box-shadow:0 0 8px #cc8c1a;"></div>Avg Regular Gas (Canada)
-        </div>
-        <div class="pulse-value" id="pulse-gas">--</div>
-        <div class="pulse-sub">Source: NRCAN Weekly (Leading Indicator)</div>
-      </div>
-    </section>
-
-
-
-    <section class="card hero">
-      <article class="hero-main">
-        <div class="kicker">Official CPI (YoY)</div>
-        <div id="hero-yoy" class="hero-value">--</div>
-        <div id="hero-summary" class="hero-caption">Loading inflation context...</div>
-      </article>
-      <aside class="hero-side">
-        <div class="stat-box">
-          <div class="kicker">Nowcast Signal (YoY)</div>
-          <div id="hero-nowcast" class="stat-value">--</div>
-          <div class="small-note" id="hero-divergence">Deviation from expectations (YoY): --</div>
-        </div>
-        <div class="stat-box">
-          <div class="kicker">Official Release Month</div>
-          <div id="hero-release" class="stat-value">--</div>
-          <div class="small-note" id="hero-confidence">Confidence: -- | Signal quality: --</div>
-        </div>
-      </aside>
-    </section>
-
-    <section class="card info-card">
-      <div class="kicker">Purchasing Power</div>
-      <h3 id="card-power-title">--</h3>
-      <p id="card-power-body">--</p>
-    </section>
-
+    <!-- HERO -->
     <section class="card">
-      <h2 class="panel-title">How To Read This Dashboard</h2>
-      <ul id="explain-list" class="meta-list"></ul>
+      <div class="hero-grid">
+        <div>
+          <div class="hero-eyebrow">Official CPI — Year over Year</div>
+          <div id="hero-yoy" class="hero-number tone-neutral">—</div>
+          <div id="hero-summary" class="hero-caption loading">Loading inflation data…</div>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-chip">
+            <div class="eyebrow">Nowcast Signal</div>
+            <div class="value" id="hero-nowcast">—</div>
+            <div class="note" id="hero-divergence">YoY deviation: —</div>
+          </div>
+          <div class="stat-chip">
+            <div class="eyebrow">Release Month</div>
+            <div class="value" id="hero-release">—</div>
+            <div class="note" id="hero-confidence">Confidence: — | Quality: —</div>
+          </div>
+        </div>
+      </div>
     </section>
 
-    <section id="main-mode" class="mode">
-      <section class="card">
-        <h2 class="panel-title">Release Intelligence</h2>
-        <div id="release-grid" class="release-grid"></div>
-      </section>
+    <!-- LEADING INDICATORS (Pulse) -->
+    <section id="pulse-section" style="display:none;">
+      <div class="pulse-row">
+        <div class="pulse-card">
+          <div class="pulse-eyebrow">
+            <span class="live-dot"></span> Avg Asking Rent · Canada
+          </div>
+          <div class="pulse-value" id="pulse-rent">—</div>
+          <div class="pulse-source">Rentals.ca · Leading Indicator</div>
+        </div>
+        <div class="pulse-card gas">
+          <div class="pulse-eyebrow">
+            <span class="live-dot" style="background:var(--amber);"></span> Avg Regular Gas · Canada
+          </div>
+          <div class="pulse-value" id="pulse-gas">—</div>
+          <div class="pulse-source">NRCAN Weekly · Leading Indicator</div>
+        </div>
+      </div>
+    </section>
 
-      <section class="card">
-        <h2 class="panel-title">Nowcast vs Official CPI (Year-over-Year)</h2>
+    <!-- PURCHASING POWER -->
+    <section class="card power-card card-sm">
+      <div class="section-label">Purchasing Power</div>
+      <div class="power-title" id="card-power-title">—</div>
+      <div class="power-body" id="card-power-body">—</div>
+    </section>
+
+    <!-- RELEASE INTELLIGENCE -->
+    <section class="card">
+      <div class="panel-title">Release Intelligence</div>
+      <div class="chip-grid" id="release-grid"></div>
+    </section>
+
+    <!-- NOWCAST CHART -->
+    <section class="card">
+      <div class="panel-title">Nowcast vs Official CPI (Year-over-Year)</div>
+      <div class="chart-container">
         <canvas id="divergenceChart"></canvas>
-      </section>
+      </div>
+    </section>
 
-      <section class="expert-grid">
-        <article class="card">
-          <h2 class="panel-title">Category Contribution Ranking</h2>
-          <p id="category-placeholder" class="chart-placeholder" style="display:none;"></p>
+    <!-- CATEGORY + METHODOLOGY -->
+    <div class="expert-grid">
+      <section class="card">
+        <div class="panel-title">Category Contribution Ranking</div>
+        <p id="category-placeholder" class="chart-placeholder" style="display:none;"></p>
+        <div class="chart-container" style="height:260px;">
           <canvas id="categoryChart"></canvas>
-        </article>
-        <article class="card">
-          <h2 class="panel-title">Methodology In Plain Language</h2>
-          <ul id="methodology-list" class="meta-list"></ul>
-        </article>
+        </div>
       </section>
-
       <section class="card">
-        <h2 class="panel-title">Signal Performance (How Well It Tracked CPI)</h2>
+        <div class="panel-title">Methodology</div>
+        <ul id="methodology-list" class="meta-list"></ul>
+      </section>
+    </div>
+
+    <!-- COMMUNITY -->
+    <section id="community-section" class="card">
+      <div class="panel-title">Community Reports</div>
+      <div class="community-grid" id="community-stats-grid"></div>
+    </section>
+
+    <!-- HOW TO READ -->
+    <section class="card card-sm">
+      <div class="panel-title">How To Read This Dashboard</div>
+      <div class="explainer-grid" id="explain-grid"></div>
+    </section>
+
+    <!-- PERFORMANCE & CALIBRATION -->
+    <details class="accordion card-sm">
+      <summary>Signal Performance</summary>
+      <div class="accordion-body">
         <ul id="performance-list" class="meta-list"></ul>
-      </section>
+      </div>
+    </details>
 
-      <section class="card">
-        <h2 class="panel-title">Calibration & Maturity</h2>
+    <details class="accordion card-sm">
+      <summary>Calibration &amp; Maturity</summary>
+      <div class="accordion-body">
         <ul id="calibration-list" class="meta-list"></ul>
-      </section>
+      </div>
+    </details>
 
-      <section class="card">
-        <h2 class="panel-title">Data Source Diagnostics</h2>
+    <!-- DATA SOURCE DIAGNOSTICS -->
+    <section class="card" style="padding: 1.5rem 1.5rem 1rem;">
+      <div class="panel-title">Data Source Diagnostics</div>
+      <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Data Source</th>
+              <th>Source</th>
               <th>Category</th>
               <th>Status</th>
-              <th>Last Successful Run</th>
-              <th>Observation Period</th>
-              <th>Run Age (hrs)</th>
+              <th>Last Run</th>
+              <th>Period</th>
+              <th>Age (hrs)</th>
               <th>Notes</th>
             </tr>
           </thead>
           <tbody id="source-health-body"></tbody>
         </table>
-      </section>
-      <details class="card">
-        <summary>Methodology notes and caveats</summary>
-        <ul id="notes-list" class="meta-list"></ul>
-      </details>
+      </div>
     </section>
+
+    <!-- METHODOLOGY NOTES -->
+    <details class="accordion card-sm">
+      <summary>Methodology Notes &amp; Caveats</summary>
+      <div class="accordion-body">
+        <ul id="notes-list" class="meta-list"></ul>
+      </div>
+    </details>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      Experimental open-source nowcast using public Statistics Canada data.<br />
+      Not official StatCan CPI. <a href="https://github.com/lucasbarnes96/true-inflation-canada" target="_blank">View on
+        GitHub</a>
+    </footer>
+
   </main>
 
   <script>
@@ -571,7 +921,7 @@
     }
 
     function toneClass(yoy) {
-      if (yoy === null || yoy === undefined || Number.isNaN(yoy)) return "";
+      if (yoy === null || yoy === undefined || Number.isNaN(yoy)) return "tone-neutral";
       if (yoy < 2) return "tone-good";
       if (yoy <= 4) return "tone-warn";
       return "tone-bad";
@@ -645,10 +995,10 @@
           const liveX = xScale.getPixelForValue(firstLiveIndex);
           const ctx = chart.ctx;
           ctx.save();
-          ctx.fillStyle = "rgba(120, 126, 122, 0.08)";
+          ctx.fillStyle = "rgba(110,110,115,0.06)";
           ctx.fillRect(area.left, area.top, Math.max(0, liveX - area.left), area.bottom - area.top);
-          ctx.fillStyle = "#4f6658";
-          ctx.font = "12px 'IBM Plex Mono', monospace";
+          ctx.fillStyle = "#98989d";
+          ctx.font = "11px 'SF Mono', ui-monospace, monospace";
           ctx.fillText("Pre-live (official only)", area.left + 8, area.top + 16);
           ctx.restore();
         },
@@ -664,8 +1014,8 @@
           const y = yScale.getPixelForValue(val);
           const ctx = chart.ctx;
           ctx.save();
-          ctx.strokeStyle = "#2b8f6f";
-          ctx.fillStyle = "#2b8f6f";
+          ctx.strokeStyle = "#0071e3";
+          ctx.fillStyle = "#0071e3";
           ctx.lineWidth = 1.5;
           ctx.beginPath();
           ctx.moveTo(x + 6, y - 16);
@@ -677,14 +1027,15 @@
           ctx.lineTo(x + 36, y - 28);
           ctx.closePath();
           ctx.fill();
-          ctx.font = "12px 'IBM Plex Mono', monospace";
-          ctx.fillText("Live nowcast starts here", x + 46, y - 28);
+          ctx.font = "11px 'SF Mono', ui-monospace, monospace";
+          ctx.fillText("Live nowcast starts", x + 46, y - 28);
           ctx.restore();
         },
       };
 
       if (divergenceChart) divergenceChart.destroy();
-      divergenceChart = new Chart(document.getElementById("divergenceChart"), {
+      const canvas = document.getElementById("divergenceChart");
+      divergenceChart = new Chart(canvas, {
         data: {
           labels: days,
           datasets: [
@@ -692,37 +1043,53 @@
               type: "line",
               label: "Nowcast YoY",
               data: nowcast,
-              borderColor: "#2b8f6f",
-              backgroundColor: "rgba(43, 143, 111, 0.15)",
-              tension: 0.2,
+              borderColor: "#0071e3",
+              backgroundColor: "rgba(0,113,227,0.08)",
+              tension: 0.25,
               spanGaps: false,
               yAxisID: "y",
+              pointRadius: 0,
+              borderWidth: 2,
             },
             {
               type: "line",
               label: "Official CPI YoY",
               data: official,
-              borderColor: "#cc8c1a",
-              borderDash: [6, 5],
+              borderColor: "#ff9f0a",
+              borderDash: [6, 4],
               backgroundColor: "rgba(0,0,0,0)",
-              tension: 0.2,
+              tension: 0.25,
               yAxisID: "y",
+              pointRadius: 0,
+              borderWidth: 2,
             },
           ],
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           interaction: { mode: "index", intersect: false },
-          plugins: { legend: { labels: { color: "#204133" } } },
+          plugins: {
+            legend: {
+              labels: {
+                color: "#6e6e73",
+                font: { size: 12, family: "-apple-system, sans-serif" },
+                boxWidth: 16,
+                padding: 16,
+              },
+            },
+          },
           scales: {
             y: {
               position: "left",
-              ticks: { color: "#4f6658" },
-              grid: { color: "rgba(16,32,25,0.08)" },
+              ticks: { color: "#98989d", font: { size: 11 }, callback: v => v + "%" },
+              grid: { color: "rgba(0,0,0,0.05)" },
+              border: { display: false },
             },
             x: {
-              ticks: { color: "#4f6658" },
-              grid: { color: "rgba(16,32,25,0.08)" },
+              ticks: { color: "#98989d", font: { size: 11 }, maxTicksLimit: 8 },
+              grid: { color: "rgba(0,0,0,0.04)" },
+              border: { display: false },
             },
           },
         },
@@ -762,15 +1129,24 @@
         data: {
           labels: sorted.map(s => `${s.key} (${s.points})`),
           datasets: [{
-            label: "Weighted contribution (percentage points to nowcast signal)",
+            label: "Weighted contribution (pp)",
             data: sorted.map(s => (s.contribution === null ? 0 : s.contribution)),
-            backgroundColor: sorted.map(s => ((s.contribution || 0) >= 0 ? "rgba(43, 143, 111, 0.55)" : "rgba(195, 63, 79, 0.55)")),
+            backgroundColor: sorted.map(s => ((s.contribution || 0) >= 0
+              ? "rgba(0,113,227,0.55)"
+              : "rgba(255,59,48,0.55)")),
+            borderRadius: 6,
           }],
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: {
-            legend: { labels: { color: "#204133" } },
+            legend: {
+              labels: {
+                color: "#6e6e73",
+                font: { size: 11, family: "-apple-system, sans-serif" },
+              },
+            },
             tooltip: {
               callbacks: {
                 label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.parsed.y || 0).toFixed(3)} pp`,
@@ -778,8 +1154,16 @@
             },
           },
           scales: {
-            y: { ticks: { color: "#4f6658" }, grid: { color: "rgba(16,32,25,0.08)" } },
-            x: { ticks: { color: "#4f6658" }, grid: { color: "rgba(16,32,25,0.08)" } },
+            y: {
+              ticks: { color: "#98989d", font: { size: 11 } },
+              grid: { color: "rgba(0,0,0,0.05)" },
+              border: { display: false },
+            },
+            x: {
+              ticks: { color: "#98989d", font: { size: 10 } },
+              grid: { display: false },
+              border: { display: false },
+            },
           },
         },
       });
@@ -790,12 +1174,12 @@
       tbody.innerHTML = "";
       const sourceName = {
         openfoodfacts_api: "OpenFoodFacts (crowd prices)",
-        statcan_food_prices: "Statistics Canada food prices",
-        apify_loblaws: "Loblaws web scrape (Apify)",
-        statcan_gas_csv: "Statistics Canada fuel prices",
-        statcan_cpi_csv: "Statistics Canada CPI table",
-        oeb_scrape: "Ontario Energy Board rates",
-        statcan_energy_cpi_csv: "Statistics Canada energy CPI",
+        statcan_food_prices: "StatCan food prices",
+        apify_loblaws: "Loblaws (Apify)",
+        statcan_gas_csv: "StatCan fuel prices",
+        statcan_cpi_csv: "StatCan CPI table",
+        oeb_scrape: "Ontario Energy Board",
+        statcan_energy_cpi_csv: "StatCan energy CPI",
       };
       const categoryName = {
         food: "Food",
@@ -803,19 +1187,20 @@
         transport: "Transport / fuel",
         energy: "Energy / utilities",
         communication: "Phone / internet",
-        health_personal: "Health / personal care",
-        recreation_education: "Recreation / education",
+        health_personal: "Health / personal",
+        recreation_education: "Recreation / edu",
       };
       sourceHealth.forEach(row => {
         const tr = document.createElement("tr");
+        const statusClass = row.status === "ok" ? "status-ok" : row.status === "warn" ? "status-warn" : "status-err";
         tr.innerHTML = `
           <td>${sourceName[row.source] || row.source}</td>
           <td>${categoryName[row.category] || row.category}</td>
-          <td>${(row.status || "--").toUpperCase()}</td>
-          <td>${row.last_success_timestamp || "No successful run"}</td>
-          <td>${row.last_observation_period || "--"}</td>
-          <td>${row.run_age_hours ?? "--"}</td>
-          <td>${row.detail || "--"}</td>
+          <td class="${statusClass}">${(row.status || "--").toUpperCase()}</td>
+          <td style="font-family:var(--font-mono);font-size:0.78rem;">${row.last_success_timestamp || "No successful run"}</td>
+          <td style="font-family:var(--font-mono);font-size:0.78rem;">${row.last_observation_period || "--"}</td>
+          <td style="font-family:var(--font-mono);">${row.run_age_hours ?? "--"}</td>
+          <td style="color:var(--text-secondary);font-size:0.82rem;">${row.detail || "--"}</td>
         `;
         tbody.appendChild(tr);
       });
@@ -836,10 +1221,6 @@
       const officialYoy = official.yoy_display_pct ?? official.yoy_pct;
       const consensusYoy = consensus?.headline_yoy ?? latest.headline?.consensus_yoy;
       const consensusMom = consensus?.headline_mom ?? null;
-      const consensusPayload = consensus || latest.meta?.consensus || {};
-      const consensusSources = (consensusPayload.sources || []).map((s) => s.source).filter(Boolean);
-      const consensusSourceLabel = consensusSources.length ? `Sources: ${consensusSources.join(", ")}` : "Sources unavailable";
-      const consensusGuardrailReason = consensusPayload.guardrails?.reason;
       const deviation = latest.headline?.deviation_yoy_pct ?? latest.headline?.consensus_spread_yoy;
       const deviationEnabled = liveDays >= 30 && consensusYoy !== null && consensusYoy !== undefined;
       const nextRelease = upcomingRelease?.next_release || latest.meta?.release_intelligence || {};
@@ -848,57 +1229,61 @@
         {
           title: "Next CPI Release (ET)",
           value: nextRelease.release_at_et || "--",
-          note: `Source: StatCan calendar`,
+          note: "StatCan calendar",
         },
         {
           title: "Countdown",
           value: formatCountdown(nextRelease.countdown_seconds),
-          note: `Until next publication`,
+          note: "Until next publication",
         },
         {
-          title: "Consensus YoY (Unofficial)",
-          value: consensusYoy === null || consensusYoy === undefined ? "Consensus: Unavailable" : `${Number(consensusYoy).toFixed(2)}%`,
+          title: "Consensus YoY",
+          value: consensusYoy === null || consensusYoy === undefined ? "Unavailable" : `${Number(consensusYoy).toFixed(2)}%`,
           note: consensusYoy === null || consensusYoy === undefined
-            ? `Consensus withheld (${consensusGuardrailReason || "no_usable_sources"}). ${consensusSourceLabel}.`
-            : `${consensusSourceLabel}.`,
+            ? "Not yet available"
+            : "Free-source estimate",
         },
         {
-          title: "Consensus MoM (Unofficial)",
+          title: "Consensus MoM",
           value: consensusMom === null || consensusMom === undefined ? "--" : `${Number(consensusMom).toFixed(2)}%`,
-          note: `${consensusSourceLabel}.`,
+          note: "Free-source estimate",
         },
         {
           title: "Last Actual CPI",
           value: `${pct(officialYoy, 1)} YoY / ${pct(official.mom_pct)} MoM`,
-          note: `Release month: ${official.latest_release_month || "--"}`,
+          note: `Release: ${official.latest_release_month || "--"}`,
         },
         {
-          title: "Deviation from Expectations",
+          title: "Deviation",
           value: !deviationEnabled || deviation === null || deviation === undefined
             ? "Unavailable"
             : `${Number(deviation).toFixed(2)} pp`,
           note: consensusYoy === null || consensusYoy === undefined
-            ? `Consensus unavailable (${consensusGuardrailReason || "no_usable_sources"}). ${consensusSourceLabel}.`
+            ? "Consensus unavailable"
             : liveDays < 30
-              ? "Deviation is hidden until at least 30 live nowcast days are available."
-              : "Nowcast YoY - consensus YoY",
+              ? "Needs 30 live days"
+              : "Nowcast YoY − consensus YoY",
         },
         {
-          title: "Forecast: Next CPI YoY",
+          title: "Forecast: Next YoY",
           value: nextForecast.status === "published" && nextForecast.point_yoy !== null && nextForecast.point_yoy !== undefined
             ? `${Number(nextForecast.point_yoy).toFixed(2)}%`
             : "Withheld",
           note: nextForecast.status === "published"
-            ? `Range ${pct(nextForecast.lower_yoy, 2)} to ${pct(nextForecast.upper_yoy, 2)} | Confidence ${String(nextForecast.confidence || "low").toUpperCase()}`
-            : "Forecast is hidden until enough live history exists.",
+            ? `Range ${pct(nextForecast.lower_yoy, 2)} – ${pct(nextForecast.upper_yoy, 2)} | ${String(nextForecast.confidence || "low").toUpperCase()}`
+            : "Need more live history",
         },
       ];
       grid.innerHTML = "";
       cards.forEach((card) => {
         const el = document.createElement("article");
-        el.className = "chip";
+        el.className = "intel-chip";
         el.title = card.note;
-        el.innerHTML = `<div class="kicker">${card.title}</div><div class="stat-value">${card.value}</div><div class="chip-age">${card.note}</div>`;
+        el.innerHTML = `
+          <div class="eyebrow">${card.title}</div>
+          <div class="chip-value">${card.value}</div>
+          <div class="chip-note">${card.note}</div>
+        `;
         grid.appendChild(el);
       });
     }
@@ -914,32 +1299,32 @@
 
       const hero = document.getElementById("hero-yoy");
       hero.textContent = pct(yoyDisplay !== null && yoyDisplay !== undefined ? yoyDisplay : yoy, 1);
-      hero.className = `hero-value ${toneClass(yoy)}`;
+      hero.className = `hero-number ${toneClass(yoy)}`;
 
       let summary = "Official CPI is unavailable right now.";
       if (yoy !== null && yoy !== undefined) {
-        if (yoy < 2) summary = "Prices are rising slowly compared with last year. Day-to-day budget pressure is usually lighter.";
+        if (yoy < 2) summary = "Prices are rising slowly compared with last year. Day-to-day budget pressure is lighter.";
         else if (yoy <= 4) summary = "Prices are rising at a moderate pace. Many households still feel pressure on essentials.";
         else summary = "Prices are rising quickly. Most households are likely feeling broad budget strain.";
       }
       document.getElementById("hero-summary").textContent = summary;
+      document.getElementById("hero-summary").classList.remove("loading");
       document.getElementById("hero-nowcast").textContent = pct(nowcast, 3);
-      document.getElementById("hero-divergence").textContent = `Deviation from expectations (YoY): ${pct(deviation, 3)}`;
+      document.getElementById("hero-divergence").textContent = `YoY deviation: ${pct(deviation, 3)}`;
       document.getElementById("hero-release").textContent = maybe(latest.official_cpi?.latest_release_month);
       const quality = latest.headline?.signal_quality_score;
-      document.getElementById("hero-confidence").textContent = `Confidence: ${(latest.headline?.confidence || "--").toUpperCase()} | Data quality score: ${quality ?? "--"}/100`;
+      document.getElementById("hero-confidence").textContent = `${(latest.headline?.confidence || "--").toUpperCase()} | ${quality ?? "--"}/100`;
     }
 
     function renderPurchasingPowerCard(latest) {
       const topDriver = latest.meta?.top_driver || { category: null, contribution_pct: null };
-
       const yoy = latest.official_cpi?.yoy_pct;
       const purchasingPower = yoy === null || yoy === undefined ? null : (100 / (1 + (Number(yoy) / 100)));
       document.getElementById("card-power-title").textContent = purchasingPower === null
         ? "Purchasing power: unavailable"
-        : `$100 buys about $${purchasingPower.toFixed(2)} of last year's basket`;
+        : `$100 buys ~$${purchasingPower.toFixed(2)} of last year's basket`;
       const topText = topDriver.category
-        ? `${topDriver.category} is currently the strongest driver (${pct(topDriver.contribution_pct, 3)} weighted impact on this month).`
+        ? `${topDriver.category} is currently the strongest driver (${pct(topDriver.contribution_pct, 3)} weighted impact this month).`
         : "Top category driver will appear once enough daily history accumulates.";
       document.getElementById("card-power-body").textContent = topText;
     }
@@ -963,17 +1348,15 @@
       const repThreshold = gate.representativeness_min_fresh_ratio;
       const topDriver = latest.meta?.top_driver || {};
       const rows = [
-        `Method version: ${latest.meta?.method_version || methodology?.method_version || "--"} (how this nowcast is calculated).`,
-        `Coverage ratio: ${(100 * (latest.headline?.coverage_ratio || 0)).toFixed(1)}% of the planned basket had usable data today.`,
-        `Tracked basket share in this model: ${typeof trackedShare === "number" ? (100 * trackedShare).toFixed(1) : "--"}% (source: ${weightsRef.source_table || "StatCan"}).`,
-        "Communication is treated as a proxy mapped within broader CPI structures, not a standalone official major component.",
-        `Lead signal: ${(latest.headline?.lead_signal || "--").toUpperCase()} means this model currently points to prices moving ${latest.headline?.lead_signal || "--"}.`,
-        "Model uses minimal smoothing with transparent calibration diagnostics to reduce tail misses while preserving real-time sensitivity.",
-        `Top driver right now: ${topDriver.category || "--"} (${pct(topDriver.contribution_pct, 3)} contribution to current signal).`,
-        `Food resilience gate: at least ${gate.food_gate?.min_fresh_sources ?? "--"} fresh and ${gate.food_gate?.min_usable_sources ?? "--"} usable food sources.`,
-        `Representativeness release threshold: ${typeof repThreshold === "number" ? (100 * repThreshold).toFixed(0) : "--"}% fresh basket coverage.`,
-        "Housing blends a live asking-rent momentum signal with broader housing proxies; this differs from survey-based transacted-rent CPI methods.",
-        "Deprecated compatibility fields are still emitted: headline.nowcast_mom_pct and headline.consensus_spread_yoy.",
+        `Method version: ${latest.meta?.method_version || methodology?.method_version || "--"}`,
+        `Coverage ratio: ${(100 * (latest.headline?.coverage_ratio || 0)).toFixed(1)}% of basket had usable data today.`,
+        `Tracked basket share: ${typeof trackedShare === "number" ? (100 * trackedShare).toFixed(1) : "--"}% (source: ${weightsRef.source_table || "StatCan"}).`,
+        `Lead signal: ${(latest.headline?.lead_signal || "--").toUpperCase()} — prices moving ${latest.headline?.lead_signal || "--"}.`,
+        `Top driver: ${topDriver.category || "--"} (${pct(topDriver.contribution_pct, 3)} contribution).`,
+        `Food gate: ≥${gate.food_gate?.min_fresh_sources ?? "--"} fresh / ${gate.food_gate?.min_usable_sources ?? "--"} usable sources.`,
+        `Representativeness threshold: ${typeof repThreshold === "number" ? (100 * repThreshold).toFixed(0) : "--"}% fresh basket coverage.`,
+        "Housing blends live asking-rent momentum with broader proxies; differs from survey-based CPI.",
+        "Communication is mapped within broader CPI structures, not a standalone major component.",
       ];
       rows.forEach(text => {
         const li = document.createElement("li");
@@ -998,17 +1381,16 @@
       ul.innerHTML = "";
       const rows = [
         `Evaluation window: last ${performance?.window_days ?? "--"} days`,
-        `Evaluated points (raw window): ${performance?.evaluated_points ?? "--"}`,
+        `Evaluated points (raw): ${performance?.evaluated_points ?? "--"}`,
         `Evaluated live points (non-seeded): ${performance?.evaluated_live_points ?? "--"}`,
         `Live nowcast days accumulated: ${liveDays}`,
-        `MAE (YoY): ${performance?.mae_yoy_pct ?? "--"} percentage points`,
-        `Median absolute error (YoY): ${performance?.median_abs_error_yoy_pct ?? "--"} percentage points`,
+        `MAE (YoY): ${performance?.mae_yoy_pct ?? "--"} pp`,
+        `Median abs error (YoY): ${performance?.median_abs_error_yoy_pct ?? "--"} pp`,
         `Directional accuracy (YoY): ${performance?.directional_accuracy_yoy_pct ?? "--"}%`,
-        `Bias (YoY): ${performance?.bias_yoy_pct ?? "--"} percentage points`,
-        `MAE (MoM): ${performance?.mae_mom_pct ?? "--"} percentage points`,
-        `Directional accuracy (MoM, compatibility): ${performance?.directional_accuracy_pct ?? "--"}%`,
-        `Lead-time score (MoM, compatibility): ${performance?.lead_time_score_pct ?? "--"}%`,
-        "Interpret all performance metrics cautiously until 30-60 live days accumulate.",
+        `Bias (YoY): ${performance?.bias_yoy_pct ?? "--"} pp`,
+        `MAE (MoM): ${performance?.mae_mom_pct ?? "--"} pp`,
+        `Directional accuracy (MoM): ${performance?.directional_accuracy_pct ?? "--"}%`,
+        "Interpret all metrics cautiously until 30–60 live days accumulate.",
       ];
       rows.forEach(text => {
         const li = document.createElement("li");
@@ -1025,13 +1407,13 @@
       const eligibility = current.forecast_eligibility || {};
       const rows = [
         `Maturity tier: ${(current.maturity_tier || "--").toUpperCase()}`,
-        `Live days observed: ${current.live_days ?? "--"} (stable-eval target: ${current.minimum_days_for_stable_eval ?? "--"} days)`,
+        `Live days: ${current.live_days ?? "--"} (stable-eval target: ${current.minimum_days_for_stable_eval ?? "--"} days)`,
         `Forecast eligibility: ${eligibility.eligible ? "ELIGIBLE" : "NOT ELIGIBLE"}${eligibility.reason ? ` (${eligibility.reason})` : ""}`,
-        `Current YoY MAE: ${metrics.mae_yoy_pct ?? "--"} pp`,
-        `Current YoY median abs error: ${metrics.median_abs_error_yoy_pct ?? "--"} pp`,
-        `Current YoY directional accuracy: ${metrics.directional_accuracy_yoy_pct ?? "--"}%`,
-        `Current YoY bias: ${metrics.bias_yoy_pct ?? "--"} pp`,
-        "Calibration applies moderate shrinkage toward official trend when source diversity is weak or anomaly pressure is elevated.",
+        `YoY MAE: ${metrics.mae_yoy_pct ?? "--"} pp`,
+        `YoY median abs error: ${metrics.median_abs_error_yoy_pct ?? "--"} pp`,
+        `YoY directional accuracy: ${metrics.directional_accuracy_yoy_pct ?? "--"}%`,
+        `YoY bias: ${metrics.bias_yoy_pct ?? "--"} pp`,
+        "Calibration applies moderate shrinkage toward official trend when source diversity is weak.",
       ];
       rows.forEach((text) => {
         const li = document.createElement("li");
@@ -1041,19 +1423,20 @@
     }
 
     function renderExplainers() {
-      const ul = document.getElementById("explain-list");
-      ul.innerHTML = "";
+      const grid = document.getElementById("explain-grid");
+      grid.innerHTML = "";
       const rows = [
         "Official CPI (YoY): year-over-year inflation from Statistics Canada.",
-        "Nowcast Signal (YoY): model-implied annual inflation estimate from live public signals.",
-        "Deviation from Expectations: nowcast YoY minus available consensus YoY.",
-        "Data quality score reflects source coverage, recency, anomaly filtering, and source diversity.",
-        "Live nowcast series begins on February 16, 2026 by design for authenticity.",
+        "Nowcast Signal: model-implied annual inflation from live public data signals.",
+        "Deviation: nowcast YoY minus available consensus YoY.",
+        "Data quality score reflects source coverage, recency, anomaly filtering, and diversity.",
+        "Live nowcast began Feb 16 2026 by design for authenticity.",
       ];
       rows.forEach((text) => {
-        const li = document.createElement("li");
-        li.textContent = text;
-        ul.appendChild(li);
+        const el = document.createElement("div");
+        el.className = "explainer-item";
+        el.textContent = text;
+        grid.appendChild(el);
       });
     }
 
@@ -1061,20 +1444,10 @@
       const indicators = meta.indicators || {};
       const rent = indicators.average_asking_rent;
       const gas = indicators.gasoline_canada_avg;
-
       const section = document.getElementById("pulse-section");
-
-      if (rent || gas) {
-        section.style.display = "grid";
-      }
-
-      if (rent) {
-        document.getElementById("pulse-rent").textContent = "$" + Math.round(rent).toLocaleString();
-      }
-
-      if (gas) {
-        document.getElementById("pulse-gas").textContent = gas.toFixed(1) + " ¢/L";
-      }
+      if (rent || gas) section.style.display = "block";
+      if (rent) document.getElementById("pulse-rent").textContent = "$" + Math.round(rent).toLocaleString();
+      if (gas) document.getElementById("pulse-gas").textContent = gas.toFixed(1) + " ¢/L";
     }
 
     async function fetchCommunityStats() {
@@ -1082,32 +1455,22 @@
         const res = await fetch('/v1/community/stats');
         if (!res.ok) return;
         const stats = await res.json();
-
-        if (stats.length === 0) return; // Hide section if no data
-
-        const section = document.getElementById('community-section');
+        if (stats.length === 0) return;
+        const section = document.getElementByI'co-section');
         const grid = document.getElementById('community-stats-grid');
-
         section.style.display = 'block';
         grid.innerHTML = '';
-
         stats.forEach(s => {
           const card = document.createElement('div');
-          card.className = 'pulse-card';
-          card.style.background = '#fcfffc';
-          card.style.color = '#102019';
-          card.style.border = '1px solid var(--border)';
-
-          let icon = '';
-          let unit = '';
+          card.className = 'intel-chip';
+          let icon = '', unit = '';
           if (s.category === 'gas') { icon = '⛽'; unit = '¢/L'; }
           else if (s.category === 'rent') { icon = '🏠'; unit = '$/mo'; }
           else { icon = '🛒'; unit = '$'; }
-
           card.innerHTML = `
-            <div class="pulse-label" style="color:var(--muted);">${icon} Community ${s.category.toUpperCase()}</div>
-            <div class="pulse-value" style="color:var(--accent);">${s.avg_price} ${unit}</div>
-            <div class="pulse-sub" style="color:var(--muted);">Based on ${s.count} user report(s)</div>
+            <div class="eyebrow">${icon} Community ${s.category.toUpperCase()}</div>
+            <div class="chip-value" style="color:var(--blue);">${s.avg_price} ${unit}</div>
+            <div class="chip-note">Based on ${s.count} report(s)</div>
           `;
           grid.appendChild(card);
         });
@@ -1117,7 +1480,7 @@
     }
 
     if (!UI_MODE_V2) {
-      document.getElementById("app").innerHTML = "<section class='card'><h2>UI v2 is disabled</h2><p>Append <code>?ui_v2=1</code> to enable the dashboard.</p></section>";
+      document.getElementById("app").innerHTML = "<section class='card'><h2 style='margin-bottom:.5rem;'>UI v2 is disabled</h2><p style='color:var(--text-secondary);'>Append <code>?ui_v2=1</code> to enable the dashboard.</p></section>";
     } else {
       renderExplainers();
       fetchCommunityStats();
@@ -1147,7 +1510,7 @@
         renderDivergence(items.slice(-90));
         renderCategoryChart(latest);
       }).catch(err => {
-        document.body.innerHTML = `<main class='wrap'><section class='card'><h2>Data load error</h2><p>${String(err)}</p></section></main>`;
+        document.body.innerHTML = `<main class='page'><section class='card'><h2 style='margin-bottom:.5rem;'>Data load error</h2><p style='color:var(--text-secondary);'>${String(err)}</p></section></main>`;
       });
     }
   </script>
