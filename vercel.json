@@ -3,6 +3,7 @@
   "buildCommand": "",
   "installCommand": "",
   "outputDirectory": ".",
+  "cleanUrls": true,
   "trailingSlash": false,
   "headers": [
     {
@@ -24,13 +25,10 @@
       ]
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/((?!data/).*)",
+      "destination": "/index.html"
     }
   ]
 }
